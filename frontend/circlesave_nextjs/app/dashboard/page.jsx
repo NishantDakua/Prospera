@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useWeb3 } from "@/context/Web3Provider";
 import { useAuth } from "@/context/AuthProvider";
 import useContract from "@/hooks/useContract";
@@ -11,7 +12,8 @@ import { fmtEth, fmtEthSymbol, poolTypeName, shortenAddress } from "@/lib/utils"
 
 export default function DashboardPage() {
   const { address, isAdmin, wrongNetwork, contract } = useWeb3();
-  const { user, role: authRole, isModerator: isModRole, isAdmin: isAdminRole } = useAuth();
+  const { user, role: authRole, isModerator: isModRole, isAdmin: isAdminRole, logout } = useAuth();
+  const router = useRouter();
   const {
     getGroupCount,
     getGroupInfo,
@@ -163,18 +165,25 @@ export default function DashboardPage() {
                   unoptimized
                 />
               ) : (
-                <div className={`size-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                <div className={`size-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${
                   isAdminRole ? "bg-purple-600" : isModRole ? "bg-blue-600" : "bg-luxury-crimson"
                 }`}>
                   {user?.fullName ? user.fullName.charAt(0).toUpperCase() : (isAdminRole ? "A" : isModRole ? "M" : "C")}
                 </div>
               )}
-              <div className="flex flex-col">
-                <p className="text-xs font-bold text-luxury-cream truncate max-w-[140px]">
+              <div className="flex flex-col min-w-0 flex-1">
+                <p className="text-xs font-bold text-luxury-cream truncate max-w-[120px]">
                   {user?.fullName || shortenAddress(address)}
                 </p>
                 <p className="text-[10px] text-luxury-gold/60 capitalize">{authRole}</p>
               </div>
+              <button
+                onClick={async () => { await logout(); router.push("/login"); }}
+                title="Logout"
+                className="shrink-0 p-1.5 rounded-lg text-luxury-gold/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
+              >
+                <span className="material-symbols-outlined text-base">logout</span>
+              </button>
             </div>
           )}
         </div>
