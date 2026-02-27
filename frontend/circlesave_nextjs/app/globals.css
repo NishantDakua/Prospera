@@ -1,0 +1,327 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@import "tailwindcss";
+
+/* ============================================
+   TAILWIND V4 THEME TOKENS
+   ============================================ */
+@theme {
+  /* Landing page */
+  --color-brand-bg: #0F0F14;
+  --color-brand-gold: #D5BF86;
+  --color-brand-ivory: #F1F0CC;
+  --color-brand-crimson: #A71D31;
+  --color-brand-deep: #3F0D12;
+
+  /* Dashboard */
+  --color-luxury-gold: #D5BF86;
+  --color-luxury-crimson: #A71D31;
+  --color-luxury-cream: #F1F0CC;
+  --color-luxury-dark: #0F0F14;
+  --color-luxury-tint: #3F0D12;
+
+  /* Wizard / Bidding / Profile */
+  --color-primary: #A71D31;
+  --color-accent-gold: #D5BF86;
+  --color-text-ivory: #F1F0CC;
+  --color-background-light: #f8f6f6;
+  --color-background-dark: #0F0F14;
+  --color-card-glass: #3F0D12;
+  --color-accent: #d5bf86;
+  --color-wealth: #f1f0cc;
+  --color-navy-dark: #0A0F14;
+
+  /* Fonts */
+  --font-sans: "Plus Jakarta Sans", sans-serif;
+  --font-serif: "Playfair Display", serif;
+  --font-display: "Manrope", sans-serif;
+
+  /* Border radius */
+  --radius-custom: 20px;
+}
+
+/* ============================================
+   SHARED BASE STYLES
+   ============================================ */
+:root {
+  --bg-deep: #0F0F14;
+  --gold: #D5BF86;
+  --crimson: #A71D31;
+  --cream: #F1F0CC;
+  --glass-tint: #3F0D12;
+  --radius: 20px;
+  --bg-dark: #0F0F14;
+  --gold-primary: #D5BF86;
+  --gold-light: #F1F0CC;
+  --accent-red: #A71D31;
+  --glass-bg: #3F0D12;
+  --bg-deep-navy: #0A0F14;
+  --glass-wine: #3F0D12;
+  --secondary-gold: #D5BF86;
+  --text-cream: #F1F0CC;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: #0F0F14;
+  color: #F1F0CC;
+  font-family: 'Manrope', 'Plus Jakarta Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ============================================
+   SHARED UTILITIES (used via className)
+   ============================================ */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.glass-card-alt {
+  background: rgba(165, 29, 49, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(213, 191, 134, 0.1);
+}
+
+.glass-card-bidding {
+  background: rgba(63, 13, 18, 0.2);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(213, 191, 134, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.luxury-glass {
+  background: rgba(63, 13, 18, 0.15);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(213, 191, 134, 0.1);
+  border-radius: var(--radius);
+}
+
+.glass-panel {
+  background: rgba(63, 13, 18, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(213, 191, 134, 0.15);
+}
+
+.glass-panel-wizard {
+  background: rgba(63, 13, 18, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(165, 29, 49, 0.2);
+}
+
+.premium-gradient {
+  background: linear-gradient(135deg, #A71D31 0%, #3F0D12 100%);
+}
+
+.gradient-primary {
+  background: linear-gradient(135deg, #a51d31 0%, #7a1424 100%);
+}
+
+.step-gradient {
+  background: linear-gradient(90deg, #a51d31 0%, #3F0D12 100%);
+}
+
+.gold-border-subtle {
+  border: 1px solid rgba(213, 191, 134, 0.15);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(to right, #D5BF86, #F1F0CC);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.nav-item-active {
+  background-color: #A71D31;
+  color: white;
+  border-radius: 12px;
+}
+
+.chart-grid {
+  background-image:
+    linear-gradient(to right, rgba(241, 240, 204, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(241, 240, 204, 0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.gold-border-glow {
+  border: 1px solid rgba(213, 191, 134, 0.3);
+  box-shadow: 0 0 15px rgba(213, 191, 134, 0.05);
+}
+
+.text-gold {
+  color: var(--secondary-gold);
+}
+
+.bg-wine {
+  background-color: var(--glass-wine);
+}
+
+.bg-accent-red {
+  background-color: var(--accent-red);
+}
+
+.border-gold-low {
+  border-color: rgba(213, 191, 134, 0.2);
+}
+
+.elevated-card {
+  background: #1A1A22;
+  border: 1px solid rgba(213, 191, 134, 0.05);
+}
+
+.premium-border {
+  border-color: rgba(213, 191, 134, 0.2);
+}
+
+.gradient-slider {
+  background: linear-gradient(90deg, #D5BF86 0%, #A71D31 100%) !important;
+}
+
+.text-gold-b {
+  color: var(--gold-primary);
+}
+
+.text-gold-light {
+  color: var(--gold-light);
+}
+
+.border-gold {
+  border-color: var(--gold-primary);
+}
+
+.progress-line {
+  background: linear-gradient(180deg, #D5BF86 0%, rgba(213, 191, 134, 0.1) 100%);
+}
+
+.glow-button {
+  box-shadow: 0 0 20px rgba(213, 191, 134, 0.2);
+}
+
+/* ============================================
+   BACKGROUND VIDEO
+   ============================================ */
+#bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -20;
+  pointer-events: none;
+  opacity: 0.45;
+  filter: brightness(0.6) saturate(0.95);
+}
+
+@media (max-width: 640px) {
+  #bg-video {
+    display: none;
+  }
+}
+
+/* ============================================
+   GLASS SURFACE
+   ============================================ */
+.glass-surface {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 28px;
+  transition: opacity 0.26s ease-out;
+}
+
+.glass-surface__filter {
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  z-index: -1;
+}
+
+.glass-surface__content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: inherit;
+  position: relative;
+  z-index: 1;
+}
+
+.glass-surface--svg {
+  background: hsl(0 0% 0% / 0);
+  backdrop-filter: var(--gs-filter-id, none) saturate(1);
+  box-shadow:
+    0 0 2px 1px color-mix(in oklch, white, transparent 65%) inset,
+    0 0 10px 4px color-mix(in oklch, white, transparent 85%) inset,
+    0px 4px 16px rgba(17, 17, 26, 0.05);
+}
+
+.glass-surface--fallback {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px) saturate(1.8) brightness(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.8) brightness(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--crimson);
+  border-radius: 10px;
+}
+
+/* ============================================
+   RANGE INPUT
+   ============================================ */
+input[type='range'] {
+  -webkit-appearance: none;
+  background: #2D2D35;
+  height: 6px;
+  border-radius: 5px;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  background: #D5BF86;
+  cursor: pointer;
+  border-radius: 50%;
+  border: 3px solid #0F0F14;
+  box-shadow: 0 0 10px rgba(213, 191, 134, 0.5);
+}
+
+/* Dashboard custom border radius */
+.rounded-custom {
+  border-radius: 20px;
+}
