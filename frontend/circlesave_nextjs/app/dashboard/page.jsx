@@ -132,6 +132,10 @@ export default function DashboardPage() {
                 <span className="text-sm font-semibold">Mod Console</span>
               </Link>
             )}
+            <Link href="/learn" className="flex items-center gap-4 px-5 py-3.5 transition-all rounded-xl text-luxury-gold hover:bg-luxury-gold/5">
+              <span className="material-symbols-outlined text-xl">school</span>
+              <span className="text-sm font-semibold">How It Works</span>
+            </Link>
             <Link href="/profile" className="flex items-center gap-4 px-5 py-3.5 transition-all rounded-xl text-luxury-gold hover:bg-luxury-gold/5">
               <span className="material-symbols-outlined text-xl">settings</span>
               <span className="text-sm font-semibold">Profile</span>
@@ -173,7 +177,16 @@ export default function DashboardPage() {
             <h2 className="text-3xl font-bold text-luxury-cream tracking-tight">Dashboard</h2>
             <p className="text-sm text-luxury-gold/60 mt-1">Real-time on-chain data from your circles.</p>
           </div>
-          <ConnectWallet />
+          <div className="flex items-center gap-4">
+            <Link
+              href="/learn"
+              className="flex items-center gap-2 text-luxury-gold text-xs font-bold border border-luxury-gold/20 px-5 py-2.5 rounded-xl hover:bg-luxury-gold/5 hover:border-luxury-gold/40 transition-all duration-300 uppercase tracking-widest"
+            >
+              <span className="material-symbols-outlined text-sm">school</span>
+              How It Works
+            </Link>
+            <ConnectWallet />
+          </div>
         </header>
 
         <div className="px-10 pb-12 space-y-10">
