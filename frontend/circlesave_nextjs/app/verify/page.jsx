@@ -164,7 +164,7 @@ export default function VerifyPage() {
             <div className="w-10 h-10 rounded-xl premium-gradient flex items-center justify-center">
               <span className="material-symbols-outlined text-white">account_balance_wallet</span>
             </div>
-            <span className="text-xl font-bold text-luxury-cream">CircleSave</span>
+            <span className="text-xl font-bold text-luxury-cream">Prospera</span>
           </div>
           <div className="text-right">
             <p className="text-luxury-cream text-sm font-bold">{user.fullName}</p>
@@ -462,7 +462,7 @@ export default function VerifyPage() {
               <div className="p-5 rounded-xl bg-luxury-crimson/5 border border-luxury-crimson/20 flex items-start gap-3">
                 <input type="checkbox" id="consent" required className="mt-1 accent-luxury-crimson" />
                 <label htmlFor="consent" className="text-luxury-gold/60 text-xs leading-relaxed cursor-pointer">
-                  I hereby declare that all the information provided above is true and accurate to the best of my knowledge. I authorize CircleSave to verify my identity documents as per applicable KYC regulations.
+                  I hereby declare that all the information provided above is true and accurate to the best of my knowledge. I authorize Prospera to verify my identity documents as per applicable KYC regulations.
                 </label>
               </div>
             </div>

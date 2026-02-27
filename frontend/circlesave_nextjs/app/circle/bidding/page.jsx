@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Circle Detail & Bidding (Premium) | CircleSave" };
+export const metadata = { title: "Circle Detail & Bidding (Premium) | Prospera" };
 
 export default function BiddingPage() {
     return (
@@ -251,7 +251,7 @@ export default function BiddingPage() {
                             <div className="relative overflow-hidden elevated-card p-8 rounded-3xl border border-white/5 group">
                                 <div className="relative z-10">
                                     <h4 className="text-white font-black text-xl mb-3 italic">Protocol Guide</h4>
-                                    <p className="text-[#F1F0CC]/40 text-sm mb-6 leading-relaxed">Master the art of high-frequency bidding within the CircleSave ecosystem.</p>
+                                    <p className="text-[#F1F0CC]/40 text-sm mb-6 leading-relaxed">Master the art of high-frequency bidding within the Prospera ecosystem.</p>
                                     <button className="text-[#D5BF86] text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 group-hover:gap-4 transition-all">
                                         Review Guidelines <span className="material-symbols-outlined text-sm">arrow_forward</span>
                                     </button>
@@ -268,7 +268,7 @@ export default function BiddingPage() {
                             <span className="material-symbols-outlined text-[#D5BF86]">verified_user</span>
                             <p className="text-xs font-black uppercase tracking-[0.3em] text-white">Tier-1 Encryption Secured</p>
                         </div>
-                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">© 2024 CircleSave Institutional. Private &amp; Confidential.</p>
+                        <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">© 2024 Prospera Institutional. Private &amp; Confidential.</p>
                         <div className="flex justify-center gap-10 mt-8 text-[10px] font-black uppercase tracking-[0.2em]">
                             <a className="text-white/40 hover:text-[#D5BF86] transition-colors" href="#">Legal Policy</a>
                             <a className="text-white/40 hover:text-[#D5BF86] transition-colors" href="#">Privacy Protocol</a>

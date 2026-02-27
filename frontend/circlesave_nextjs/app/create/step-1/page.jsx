@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Circle Creation Wizard - Step 1 | CircleSave" };
+export const metadata = { title: "Circle Creation Wizard - Step 1 | Prospera" };
 
 export default function CreateStep1() {
     return (
@@ -15,7 +15,7 @@ export default function CreateStep1() {
                     <div className="size-8 bg-primary rounded flex items-center justify-center text-white">
                         <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
                     </div>
-                    <h2 className="text-slate-100 text-xl font-extrabold leading-tight tracking-tight uppercase">CircleSave</h2>
+                    <h2 className="text-slate-100 text-xl font-extrabold leading-tight tracking-tight uppercase">Prospera</h2>
                 </div>
                 <nav className="hidden md:flex items-center gap-8">
                     <Link className="text-slate-400 hover:text-primary transition-colors text-sm font-semibold uppercase tracking-wider" href="/dashboard">Dashboard</Link>

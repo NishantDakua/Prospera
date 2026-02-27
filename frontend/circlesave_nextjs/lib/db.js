@@ -50,6 +50,7 @@ export async function initDB() {
       role            VARCHAR(20) DEFAULT 'customer'
                         CHECK (role IN ('admin','moderator','customer')),
       is_verified     BOOLEAN DEFAULT FALSE,
+      avatar_url      TEXT,
       created_at      TIMESTAMPTZ DEFAULT NOW(),
       updated_at      TIMESTAMPTZ DEFAULT NOW()
     );
@@ -60,6 +61,7 @@ export async function initDB() {
     DO $$ BEGIN
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
     EXCEPTION WHEN OTHERS THEN NULL;
     END $$;
   `);
@@ -114,10 +116,14 @@ export async function initDB() {
       user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       wallet_address VARCHAR(42) NOT NULL,
       label          VARCHAR(100),
+      is_primary     BOOLEAN DEFAULT FALSE,
       linked_at      TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE (wallet_address)
     );
   `);
+
+  /* safe migration for existing table */
+  await query(`ALTER TABLE user_wallets ADD COLUMN IF NOT EXISTS is_primary BOOLEAN DEFAULT FALSE`);
 
   /* ── flags (moderator raised flags on pool actions) ─────────────── */
   await query(`
@@ -158,9 +164,9 @@ export async function initDB() {
       `INSERT INTO users (email, password_hash, full_name, role, is_verified)
        VALUES ($1, $2, $3, 'admin', TRUE)
        ON CONFLICT (email) DO UPDATE SET role = 'admin', is_verified = TRUE`,
-      ["admin@circlesave.io", hash, "Platform Admin"]
+      ["admin@prospera.io", hash, "Platform Admin"]
     );
-    console.log("🔑 Seeded admin: admin@circlesave.io / admin123456");
+    console.log("🔑 Seeded admin: admin@prospera.io / admin123456");
   }
 
   return { success: true };

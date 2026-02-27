@@ -17,7 +17,7 @@ export default function Sidebar({ user }) {
                         </span>
                     </div>
                     <div className="flex flex-col">
-                        <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">CircleSave</h1>
+                        <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">Prospera</h1>
                         <p className="text-luxury-gold/60 text-[10px] uppercase tracking-widest font-bold">Premium Tier</p>
                     </div>
                 </Link>

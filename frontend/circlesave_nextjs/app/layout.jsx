@@ -4,7 +4,7 @@ import { Web3Provider } from "@/context/Web3Provider";
 import { AuthProvider } from "@/context/AuthProvider";
 
 export const metadata = {
-    title: "CircleSave | Premium Collaborative Savings",
+    title: "Prospera | Premium Collaborative Savings",
     description: "The definitive platform for premium collaborative savings.",
 };
 

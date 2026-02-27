@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Circle Creation - Final Review | CircleSave" };
+export const metadata = { title: "Circle Creation - Final Review | Prospera" };
 
 export default function CreateReview() {
     return (
@@ -12,7 +12,7 @@ export default function CreateReview() {
                         <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-wealth">
                             <span className="material-symbols-outlined">account_balance_wallet</span>
                         </div>
-                        <h2 className="text-slate-100 text-xl font-bold leading-tight tracking-tight">CircleSave</h2>
+                        <h2 className="text-slate-100 text-xl font-bold leading-tight tracking-tight">Prospera</h2>
                     </div>
                     <div className="flex flex-1 justify-end gap-8">
                         <nav className="flex items-center gap-8">
@@ -131,7 +131,7 @@ export default function CreateReview() {
 
                 <footer className="py-8 px-10 border-t border-primary/10 text-center">
                     <p className="text-slate-500 text-xs">
-                        CircleSave uses bank-grade encryption to secure your financial assets.<br />
+                        Prospera uses bank-grade encryption to secure your financial assets.<br />
                         Premium Savings Circle agreements are legally binding upon launch.
                     </p>
                 </footer>

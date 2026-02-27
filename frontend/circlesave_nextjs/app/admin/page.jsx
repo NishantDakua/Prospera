@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthProvider";
 import { useWeb3 } from "@/context/Web3Provider";
 import useContract from "@/hooks/useContract";
 import { parseEther } from "ethers";
+import { fmtEthSymbol, shortenAddress, poolTypeName } from "@/lib/utils";
 import Navbar from "@/views/layout/Navbar";
 import toast from "react-hot-toast";
 
@@ -15,6 +16,7 @@ const TABS = [
   { key: "users", label: "Users & KYC", icon: "group" },
   { key: "moderators", label: "Moderators", icon: "shield_person" },
   { key: "circles", label: "Create Circle", icon: "add_circle" },
+  { key: "manage", label: "Manage Circles", icon: "tune" },
   { key: "flags", label: "Flags", icon: "flag" },
   { key: "audit", label: "Audit Log", icon: "history" },
 ];
@@ -66,6 +68,7 @@ export default function AdminDashboard() {
           {tab === "users" && <UsersTab />}
           {tab === "moderators" && <ModeratorsTab />}
           {tab === "circles" && <CreateCircleTab />}
+          {tab === "manage" && <ManageCirclesTab />}
           {tab === "flags" && <FlagsTab />}
           {tab === "audit" && <AuditTab />}
         </div>
@@ -880,6 +883,400 @@ function CreateCircleTab() {
             </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MANAGE CIRCLES TAB
+   ══════════════════════════════════════════════════════════════════════════ */
+function ManageCirclesTab() {
+  const { address, isAdmin: isContractAdmin, wrongNetwork, connect, connecting } = useWeb3();
+  const {
+    loading,
+    getGroupCount, getGroupInfo, getGroupMembers, getMemberData, getMemberBid,
+    selectWinner, issueLoan, liquidateMember, withdrawPlatformFees, getPlatformBalance,
+  } = useContract();
+
+  const [circles, setCircles] = useState([]);
+  const [fetching, setFetching] = useState(true);
+  const [expanded, setExpanded] = useState(null); // groupId or null
+  const [members, setMembers] = useState([]);     // member details for expanded circle
+  const [membersLoading, setMembersLoading] = useState(false);
+  const [platformBal, setPlatformBal] = useState(0n);
+
+  // Loan form
+  const [loanTarget, setLoanTarget] = useState(null); // { groupId, addr }
+  const [loanAmount, setLoanAmount] = useState("");
+  const [loanInterest, setLoanInterest] = useState("");
+
+  const phase = (info) => {
+    if (info.memberCount === 0) return { label: "START", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" };
+    if (info.memberCount < info.maxMembers) return { label: "ENROLLING", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+    return { label: "LIVE", color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+  };
+
+  // Auto-connect wallet
+  useEffect(() => { if (!address) connect(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── fetch all circles ──
+  const fetchCircles = useCallback(async () => {
+    setFetching(true);
+    try {
+      const count = await getGroupCount();
+      const list = [];
+      for (let i = 0; i < count; i++) {
+        const info = await getGroupInfo(i);
+        list.push({ id: i, ...info });
+      }
+      setCircles(list);
+      const bal = await getPlatformBalance();
+      setPlatformBal(bal);
+    } catch (e) {
+      console.error("Fetch circles failed:", e);
+    } finally {
+      setFetching(false);
+    }
+  }, [getGroupCount, getGroupInfo, getPlatformBalance]);
+
+  useEffect(() => { if (address) fetchCircles(); }, [address, fetchCircles]);
+
+  // ── fetch members for expanded circle ──
+  const expandCircle = useCallback(async (groupId) => {
+    if (expanded === groupId) { setExpanded(null); return; }
+    setExpanded(groupId);
+    setMembersLoading(true);
+    try {
+      const addrs = await getGroupMembers(groupId);
+      const details = await Promise.all(addrs.map(async (addr) => {
+        const d = await getMemberData(groupId, addr);
+        const bid = await getMemberBid(groupId, addr);
+        return { addr, ...d, bid };
+      }));
+      setMembers(details);
+    } catch (e) {
+      console.error("Fetch members failed:", e);
+      setMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  }, [expanded, getGroupMembers, getMemberData, getMemberBid]);
+
+  // ── actions ──
+  const handleSelectWinner = async (groupId) => {
+    await selectWinner(groupId, () => {
+      toast.success("Winner selected for Circle #" + groupId);
+      fetchCircles();
+      if (expanded === groupId) expandCircle(groupId); // refresh member list
+    });
+  };
+
+  const handleIssueLoan = async () => {
+    if (!loanTarget || !loanAmount || !loanInterest) return;
+    const lWei = parseEther(loanAmount);
+    const iWei = parseEther(loanInterest);
+    await issueLoan(loanTarget.groupId, loanTarget.addr, lWei, iWei, () => {
+      toast.success("Loan issued!");
+      setLoanTarget(null); setLoanAmount(""); setLoanInterest("");
+      if (expanded === loanTarget.groupId) expandCircle(loanTarget.groupId);
+    });
+  };
+
+  const handleLiquidate = async (groupId, addr) => {
+    await liquidateMember(groupId, addr, () => {
+      toast.success("Member liquidated");
+      if (expanded === groupId) expandCircle(groupId);
+      fetchCircles();
+    });
+  };
+
+  const handleWithdrawFees = async () => {
+    await withdrawPlatformFees(() => {
+      toast.success("Platform fees withdrawn");
+      fetchCircles();
+    });
+  };
+
+  // ── wallet banner (same pattern as CreateCircleTab) ──
+  const walletStatus = () => {
+    if (connecting) return { icon: "progress_activity", text: "Connecting wallet…", color: "bg-blue-500/10 border-blue-500/20 text-blue-400", spin: true };
+    if (!address) return { icon: "account_balance_wallet", text: "MetaMask not connected — click to connect", color: "bg-amber-500/10 border-amber-500/20 text-amber-400", action: connect };
+    if (wrongNetwork) return { icon: "warning", text: "Wrong network — switch to Anvil (Chain ID 31337)", color: "bg-red-500/10 border-red-500/20 text-red-400" };
+    if (!isContractAdmin) return { icon: "lock", text: `Connected (${shortenAddress(address)}) — not contract owner`, color: "bg-red-500/10 border-red-500/20 text-red-400" };
+    return { icon: "verified", text: `Wallet ready · ${shortenAddress(address)}`, color: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" };
+  };
+  const ws = walletStatus();
+
+  // ── RENDER ──
+  return (
+    <div className="space-y-6">
+      {/* Wallet status bar */}
+      <button
+        type="button" onClick={ws.action} disabled={!ws.action}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold transition-all ${ws.color} ${ws.action ? "hover:brightness-110 cursor-pointer" : "cursor-default"}`}
+      >
+        <span className={`material-symbols-outlined text-base ${ws.spin ? "animate-spin" : ""}`}>{ws.icon}</span>
+        {ws.text}
+      </button>
+
+      {/* Platform Fees Row */}
+      <div className="glass-card rounded-xl p-5 gold-border-subtle flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-luxury-gold text-xl">account_balance</span>
+          <div>
+            <p className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Platform Fees Balance</p>
+            <p className="text-xl font-black text-luxury-cream">{fmtEthSymbol(platformBal)}</p>
+          </div>
+        </div>
+        <button
+          onClick={handleWithdrawFees}
+          disabled={loading || platformBal === 0n}
+          className="bg-gradient-to-r from-luxury-crimson to-rose-700 hover:brightness-110 text-white font-bold text-xs uppercase tracking-widest px-5 py-3 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <span className="material-symbols-outlined text-sm">download</span>
+          Withdraw
+        </button>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Total Circles", value: circles.length, icon: "target", color: "text-luxury-gold" },
+          { label: "Active", value: circles.filter(c => c.isActive).length, icon: "radio_button_checked", color: "text-emerald-400" },
+          { label: "Inactive", value: circles.filter(c => !c.isActive).length, icon: "radio_button_unchecked", color: "text-gray-400" },
+          { label: "Live", value: circles.filter(c => c.memberCount === c.maxMembers).length, icon: "stream", color: "text-blue-400" },
+        ].map((s) => (
+          <div key={s.label} className="glass-card rounded-xl p-4 gold-border-subtle text-center">
+            <span className={`material-symbols-outlined text-2xl ${s.color}`}>{s.icon}</span>
+            <p className="text-2xl font-black text-luxury-cream mt-1">{s.value}</p>
+            <p className="text-[10px] font-bold text-luxury-gold/40 uppercase tracking-widest">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Loading / Empty / Circle list */}
+      {fetching ? (
+        <div className="flex justify-center py-12">
+          <span className="material-symbols-outlined animate-spin text-luxury-gold text-3xl">progress_activity</span>
+        </div>
+      ) : circles.length === 0 ? (
+        <div className="glass-card rounded-xl p-12 text-center gold-border-subtle">
+          <span className="material-symbols-outlined text-5xl text-luxury-gold/20 mb-3 block">deployed_code</span>
+          <h3 className="text-luxury-cream font-black text-lg">No Circles Yet</h3>
+          <p className="text-luxury-gold/40 text-sm mt-1">Deploy your first circle from the <strong>Create Circle</strong> tab.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {circles.map((c) => {
+            const ph = phase(c);
+            const isExpanded = expanded === c.id;
+            return (
+              <div key={c.id} className="glass-card rounded-xl gold-border-subtle overflow-hidden">
+                {/* Circle header row */}
+                <button
+                  type="button"
+                  onClick={() => expandCircle(c.id)}
+                  className="w-full flex items-center justify-between px-6 py-5 hover:bg-white/[0.02] transition-all text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-luxury-crimson/60 to-rose-700/60 flex items-center justify-center">
+                      <span className="text-white font-black text-sm">#{c.id}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-luxury-cream font-bold text-sm">Circle #{c.id}</h3>
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${ph.color}`}>{ph.label}</span>
+                        <span className="text-[10px] font-bold text-luxury-gold/40 px-2 py-0.5 rounded-full bg-white/5 border border-white/10">
+                          {poolTypeName(c.poolType)}
+                        </span>
+                        {!c.isActive && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">CLOSED</span>
+                        )}
+                      </div>
+                      <p className="text-luxury-gold/40 text-xs mt-0.5">
+                        {fmtEthSymbol(c.contributionAmount)} contribution · {c.memberCount}/{c.maxMembers} members · Round {c.currentRound}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right hidden md:block">
+                      <p className="text-luxury-cream font-bold text-sm">{fmtEthSymbol(c.poolAmount)}</p>
+                      <p className="text-luxury-gold/40 text-[10px] uppercase tracking-widest">Pool</p>
+                    </div>
+                    <span className={`material-symbols-outlined text-luxury-gold/40 transition-transform ${isExpanded ? "rotate-180" : ""}`}>expand_more</span>
+                  </div>
+                </button>
+
+                {/* Expanded detail panel */}
+                {isExpanded && (
+                  <div className="border-t border-white/10 px-6 py-5 space-y-5 bg-white/[0.01]">
+                    {/* Circle detail grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+                      {[
+                        { label: "Type", value: poolTypeName(c.poolType) },
+                        { label: "Contribution", value: fmtEthSymbol(c.contributionAmount) },
+                        { label: "Members", value: `${c.memberCount} / ${c.maxMembers}` },
+                        { label: "Round", value: c.currentRound },
+                        { label: "Pool", value: fmtEthSymbol(c.poolAmount) },
+                        { label: "Active", value: c.isActive ? "Yes" : "No" },
+                        { label: "Lowest Bidder", value: c.lowestBidder === "0x0000000000000000000000000000000000000000" ? "—" : shortenAddress(c.lowestBidder) },
+                        { label: "Lowest Bid", value: c.lowestBid > 0n ? fmtEthSymbol(c.lowestBid) : "—" },
+                      ].map((d) => (
+                        <div key={d.label} className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
+                          <p className="text-[10px] font-bold text-luxury-gold/40 uppercase tracking-widest">{d.label}</p>
+                          <p className="text-luxury-cream font-bold text-sm mt-1">{d.value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Admin actions for this circle */}
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={() => handleSelectWinner(c.id)}
+                        disabled={loading || c.memberCount < c.maxMembers}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span className="material-symbols-outlined text-sm">emoji_events</span>Select Winner
+                      </button>
+                    </div>
+
+                    {/* Member list */}
+                    <div>
+                      <h4 className="text-xs font-black text-luxury-gold/60 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm">group</span>
+                        Members ({c.memberCount})
+                      </h4>
+                      {membersLoading ? (
+                        <div className="flex justify-center py-6">
+                          <span className="material-symbols-outlined animate-spin text-luxury-gold text-xl">progress_activity</span>
+                        </div>
+                      ) : members.length === 0 ? (
+                        <p className="text-luxury-gold/30 text-sm text-center py-4">No members enrolled yet</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {members.map((m) => (
+                            <div key={m.addr} className="flex items-center justify-between bg-white/[0.03] rounded-xl px-4 py-3 border border-white/5">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-luxury-crimson/20 flex items-center justify-center shrink-0">
+                                  <span className="material-symbols-outlined text-luxury-crimson text-sm">person</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-luxury-cream font-bold text-xs font-mono">{shortenAddress(m.addr)}</p>
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {m.isActive && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Active</span>}
+                                    {!m.isActive && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Inactive</span>}
+                                    {m.hasWon && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">Won</span>}
+                                    {m.hasActiveLoan && <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400">Loan Active</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                {/* Stats */}
+                                <div className="hidden md:flex gap-4 text-right">
+                                  <div>
+                                    <p className="text-[9px] font-bold text-luxury-gold/40 uppercase">Contributed</p>
+                                    <p className="text-luxury-cream font-bold text-xs">{fmtEthSymbol(m.totalContributed)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] font-bold text-luxury-gold/40 uppercase">Deposit</p>
+                                    <p className="text-luxury-cream font-bold text-xs">{fmtEthSymbol(m.securityDeposit)}</p>
+                                  </div>
+                                  {m.bid > 0n && (
+                                    <div>
+                                      <p className="text-[9px] font-bold text-luxury-gold/40 uppercase">Bid</p>
+                                      <p className="text-luxury-cream font-bold text-xs">{fmtEthSymbol(m.bid)}</p>
+                                    </div>
+                                  )}
+                                  {m.hasActiveLoan && (
+                                    <div>
+                                      <p className="text-[9px] font-bold text-luxury-gold/40 uppercase">Loan</p>
+                                      <p className="text-luxury-cream font-bold text-xs">{fmtEthSymbol(m.loanAmount)} + {fmtEthSymbol(m.loanInterest)}</p>
+                                    </div>
+                                  )}
+                                </div>
+                                {/* Actions */}
+                                <div className="flex gap-1">
+                                  <button
+                                    title="Issue Loan"
+                                    onClick={() => setLoanTarget({ groupId: c.id, addr: m.addr })}
+                                    disabled={loading || !m.isActive}
+                                    className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">request_quote</span>
+                                  </button>
+                                  <button
+                                    title="Liquidate Member"
+                                    onClick={() => handleLiquidate(c.id, m.addr)}
+                                    disabled={loading || !m.isActive}
+                                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">person_remove</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Loan Modal ── */}
+      {loanTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setLoanTarget(null)}>
+          <div className="glass-card rounded-2xl p-8 w-full max-w-md gold-border-subtle relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setLoanTarget(null)} className="absolute top-4 right-4 text-luxury-gold/40 hover:text-luxury-cream transition-colors">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-blue-400">request_quote</span>
+              </div>
+              <div>
+                <h3 className="text-luxury-cream font-black text-lg">Issue Loan</h3>
+                <p className="text-luxury-gold/40 text-xs">Circle #{loanTarget.groupId} · {shortenAddress(loanTarget.addr)}</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest block mb-1">Loan Amount (ETH)</label>
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="0.01"
+                  type="number" step="0.001" min="0.001"
+                  value={loanAmount} onChange={(e) => setLoanAmount(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest block mb-1">Interest (ETH)</label>
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  placeholder="0.001"
+                  type="number" step="0.0001" min="0"
+                  value={loanInterest} onChange={(e) => setLoanInterest(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={handleIssueLoan}
+                disabled={loading || !loanAmount || !loanInterest}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:brightness-110 text-white font-black uppercase text-sm tracking-widest px-6 py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <><span className="animate-spin material-symbols-outlined text-lg">progress_activity</span>Processing…</>
+                ) : (
+                  <><span className="material-symbols-outlined text-lg">send</span>Issue Loan</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
