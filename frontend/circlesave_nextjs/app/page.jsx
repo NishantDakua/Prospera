@@ -134,7 +134,7 @@ export default function LandingPage() {
                         <h2 className="text-brand-gold font-bold tracking-[0.4em] uppercase text-[10px] mb-4">Unparalleled Standards</h2>
                         <h3 className="text-5xl md:text-6xl font-serif font-black text-brand-ivory mb-6">Designed for the Discerning.</h3>
                         <p className="text-slate-400 max-w-2xl mx-auto text-lg font-light leading-relaxed">
-                            CircleSave redefines group economics with institutional-grade security and a user experience tailored for wealth builders.
+                            Prospera redefines group economics with institutional-grade security and a user experience tailored for wealth builders.
                         </p>
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">

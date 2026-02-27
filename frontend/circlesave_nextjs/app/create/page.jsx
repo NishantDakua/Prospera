@@ -40,7 +40,7 @@ export default function CreateGroupPage() {
           <div className="size-8 bg-primary rounded flex items-center justify-center text-white">
             <span className="material-symbols-outlined text-2xl">account_balance_wallet</span>
           </div>
-          <h2 className="text-slate-100 text-xl font-extrabold leading-tight tracking-tight uppercase">CircleSave</h2>
+          <h2 className="text-slate-100 text-xl font-extrabold leading-tight tracking-tight uppercase">Prospera</h2>
         </div>
         <div className="flex items-center gap-4">
           <nav className="hidden md:flex items-center gap-8 mr-6">

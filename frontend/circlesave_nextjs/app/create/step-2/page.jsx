@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-export const metadata = { title: "Circle Creation Wizard - Step 2 | CircleSave" };
+export const metadata = { title: "Circle Creation Wizard - Step 2 | Prospera" };
 
 export default function CreateStep2() {
     return (
@@ -14,7 +14,7 @@ export default function CreateStep2() {
                                 <path clipRule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fillRule="evenodd"></path>
                             </svg>
                         </div>
-                        <h2 className="text-text-ivory text-xl font-extrabold tracking-tight">CircleSave</h2>
+                        <h2 className="text-text-ivory text-xl font-extrabold tracking-tight">Prospera</h2>
                     </div>
                     <div className="flex items-center gap-10">
                         <nav className="hidden md:flex items-center gap-8">
@@ -155,7 +155,7 @@ export default function CreateStep2() {
                 </main>
 
                 <footer className="py-6 px-10 text-center border-t border-accent-gold/5">
-                    <p className="text-accent-gold/30 text-xs">© 2024 CircleSave Premium Fintech. Secure &amp; Encrypted.</p>
+                    <p className="text-accent-gold/30 text-xs">© 2024 Prospera Premium Fintech. Secure &amp; Encrypted.</p>
                 </footer>
             </div>
         </div>

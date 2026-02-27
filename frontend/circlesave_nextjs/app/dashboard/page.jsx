@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useWeb3 } from "@/context/Web3Provider";
 import { useAuth } from "@/context/AuthProvider";
 import useContract from "@/hooks/useContract";
@@ -10,7 +11,7 @@ import { fmtEth, fmtEthSymbol, poolTypeName, shortenAddress } from "@/lib/utils"
 
 export default function DashboardPage() {
   const { address, isAdmin, wrongNetwork, contract } = useWeb3();
-  const { role: authRole, isModerator: isModRole, isAdmin: isAdminRole } = useAuth();
+  const { user, role: authRole, isModerator: isModRole, isAdmin: isAdminRole } = useAuth();
   const {
     getGroupCount,
     getGroupInfo,
@@ -104,7 +105,7 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-white text-2xl">account_balance_wallet</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">CircleSave</h1>
+              <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">Prospera</h1>
               <p className="text-luxury-gold/60 text-[10px] uppercase tracking-widest font-bold">On-Chain</p>
             </div>
           </Link>
@@ -152,14 +153,27 @@ export default function DashboardPage() {
 
           {address && (
             <div className="flex items-center gap-4 p-3 border border-luxury-gold/10 rounded-xl bg-luxury-gold/5">
-              <div className={`size-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                isAdminRole ? "bg-purple-600" : isModRole ? "bg-blue-600" : "bg-luxury-crimson"
-              }`}>
-                {isAdminRole ? "A" : isModRole ? "M" : "C"}
-              </div>
+              {user?.avatarUrl ? (
+                <Image
+                  src={user.avatarUrl}
+                  alt={user.fullName || "Avatar"}
+                  width={32}
+                  height={32}
+                  className="size-8 rounded-full object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className={`size-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                  isAdminRole ? "bg-purple-600" : isModRole ? "bg-blue-600" : "bg-luxury-crimson"
+                }`}>
+                  {user?.fullName ? user.fullName.charAt(0).toUpperCase() : (isAdminRole ? "A" : isModRole ? "M" : "C")}
+                </div>
+              )}
               <div className="flex flex-col">
-                <p className="text-xs font-bold text-luxury-cream">{shortenAddress(address)}</p>
-                <p className="text-[10px] text-luxury-gold capitalize">{authRole}</p>
+                <p className="text-xs font-bold text-luxury-cream truncate max-w-[140px]">
+                  {user?.fullName || shortenAddress(address)}
+                </p>
+                <p className="text-[10px] text-luxury-gold/60 capitalize">{authRole}</p>
               </div>
             </div>
           )}
@@ -258,15 +272,8 @@ export default function DashboardPage() {
                   {groups.length === 0 ? (
                     <div className="text-center py-12">
                       <span className="material-symbols-outlined text-5xl text-luxury-gold/20 mb-4 block">groups</span>
-                      <p className="text-slate-400">No circles created yet.</p>
-                      {isAdmin && (
-                        <Link
-                          href="/create"
-                          className="inline-block mt-4 premium-gradient text-white px-8 py-3 rounded-lg font-bold text-sm uppercase tracking-widest"
-                        >
-                          Create First Circle
-                        </Link>
-                      )}
+                      <p className="text-slate-400">No circles available yet.</p>
+                      <p className="text-slate-500 text-xs mt-1">Circles will appear here once an admin creates them.</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto">

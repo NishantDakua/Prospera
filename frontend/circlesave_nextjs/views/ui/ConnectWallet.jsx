@@ -1,15 +1,17 @@
 "use client";
 
 import { useWeb3 } from "@/context/Web3Provider";
+import { useAuth } from "@/context/AuthProvider";
 import { shortenAddress } from "@/lib/utils";
 
 /**
- * Wallet connect button + admin badge + network indicator.
+ * Wallet connect button + role badge + network indicator.
  * Drop this into any header.
  */
 export default function ConnectWallet() {
   const { address, isAdmin, connecting, wrongNetwork, connect, CHAIN_NAME } =
     useWeb3();
+  const { role, isAdmin: isAdminRole, isModerator: isModRole } = useAuth();
 
   if (!address) {
     return (
@@ -46,13 +48,23 @@ export default function ConnectWallet() {
         {wrongNetwork ? "Wrong Network" : CHAIN_NAME}
       </div>
 
-      {/* Admin badge */}
-      {isAdmin && (
-        <div className="flex items-center gap-1.5 bg-brand-crimson/10 text-brand-crimson px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-brand-crimson/20">
-          <span className="material-symbols-outlined text-xs">
-            admin_panel_settings
-          </span>
+      {/* Role badge */}
+      {isAdminRole && (
+        <div className="flex items-center gap-1.5 bg-purple-500/10 text-purple-400 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-purple-500/20">
+          <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
           Admin
+        </div>
+      )}
+      {isModRole && (
+        <div className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
+          <span className="material-symbols-outlined text-xs">shield_person</span>
+          Moderator
+        </div>
+      )}
+      {!isAdminRole && !isModRole && role === "customer" && (
+        <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+          <span className="material-symbols-outlined text-xs">person</span>
+          Customer
         </div>
       )}
 

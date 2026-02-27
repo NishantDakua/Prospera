@@ -50,7 +50,7 @@ export default function Footer() {
 
                 <div className="pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
                     <p className="text-[10px] uppercase tracking-[0.3em] text-slate-600 font-bold">
-                        © 2024 CircleSave Wealth Technologies.
+                        © 2024 Prospera Wealth Technologies.
                     </p>
                     <div className="flex gap-8">
                         {["New York", "London", "Dubai"].map((city) => (

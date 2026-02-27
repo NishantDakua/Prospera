@@ -14,7 +14,7 @@ export async function GET() {
 
     const result = await query(
       `SELECT u.id, u.email, u.full_name, u.phone, u.wallet_address,
-              u.role, u.is_verified, k.status as kyc_status
+              u.role, u.is_verified, u.avatar_url, k.status as kyc_status
        FROM users u
        LEFT JOIN kyc k ON k.user_id = u.id
        WHERE u.id = $1`,
@@ -33,6 +33,7 @@ export async function GET() {
         fullName: row.full_name,
         phone: row.phone,
         walletAddress: row.wallet_address,
+        avatarUrl: row.avatar_url || null,
         kycStatus: row.kyc_status || "pending",
         role: row.role || "customer",
         isVerified: row.is_verified ?? false,

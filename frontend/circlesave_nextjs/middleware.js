@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "circlesave_fallback_secret"
+  process.env.JWT_SECRET || "prospera_fallback_secret"
 );
 const COOKIE_NAME = "cs_token";
 

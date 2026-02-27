@@ -73,7 +73,7 @@ function LoginForm() {
             <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
               <span className="material-symbols-outlined text-white text-2xl">account_balance_wallet</span>
             </div>
-            <span className="text-3xl font-serif font-black text-white">CircleSave</span>
+            <span className="text-3xl font-serif font-black text-white">Prospera</span>
           </div>
           <h1 className="text-5xl font-serif font-black text-white leading-tight mb-6">
             Welcome back to your <span className="text-luxury-gold">financial circle.</span>
@@ -102,7 +102,7 @@ function LoginForm() {
             <div className="w-10 h-10 rounded-xl premium-gradient flex items-center justify-center">
               <span className="material-symbols-outlined text-white">account_balance_wallet</span>
             </div>
-            <span className="text-2xl font-serif font-black text-luxury-cream">CircleSave</span>
+            <span className="text-2xl font-serif font-black text-luxury-cream">Prospera</span>
           </div>
 
           <div className="mb-10">

@@ -1,11 +1,11 @@
 /**
- * CircleSave — Shared constants
+ * Prospera — Shared constants
  * Centralizes brand meta, navigation, and content data
  * used across components.
  */
 
 export const BRAND = {
-    name: "CircleSave",
+    name: "Prospera",
     tagline: "Premium Tier",
     description:
         "The definitive platform for premium collaborative savings. Excellence in fintech, delivered with absolute discretion.",
