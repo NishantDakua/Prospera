@@ -7,6 +7,7 @@ import { parseEther } from "ethers";
 import { useWeb3 } from "@/context/Web3Provider";
 import useContract from "@/hooks/useContract";
 import ConnectWallet from "@/views/ui/ConnectWallet";
+import AiInsights from "@/components/AiInsights";
 
 export default function CreateGroupPage() {
   const router = useRouter();
@@ -299,6 +300,20 @@ export default function CreateGroupPage() {
                         </span>
                       </div>
                     </div>
+                  )}
+
+                  {/* AI Insights Preview */}
+                  {contribution && maxMembers && durValue && bidValue && membersNum >= 2 && (
+                    <AiInsights
+                      compact
+                      circleParams={{
+                        contributionAmount: parseFloat(contribution),
+                        maxMembers: parseInt(maxMembers),
+                        poolType: parseInt(poolType),
+                        totalDuration: totalDurSec,
+                        biddingWindow: biddingWinSec,
+                      }}
+                    />
                   )}
 
                   {wrongNetwork && (

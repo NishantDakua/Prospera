@@ -6,6 +6,32 @@
   },
   {
     "type": "function",
+    "name": "LOAN_INTEREST_PERCENT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "LOAN_PLATFORM_PERCENT",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "PLATFORM_FEE_PERCENT",
     "inputs": [],
     "outputs": [
@@ -184,6 +210,50 @@
         "name": "roundDeadline",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getLoanTerms",
+    "inputs": [
+      {
+        "name": "groupId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "member",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "eligible",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "loanAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "interest",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalRepay",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -443,6 +513,19 @@
   },
   {
     "type": "function",
+    "name": "requestLoan",
+    "inputs": [
+      {
+        "name": "groupId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "settleRound",
     "inputs": [
       {
@@ -636,6 +719,37 @@
       },
       {
         "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LoanRepaid",
+    "inputs": [
+      {
+        "name": "groupId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "member",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "principal",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "interest",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthProvider";
 import useContract from "@/hooks/useContract";
 import ConnectWallet from "@/views/ui/ConnectWallet";
 import { fmtEth, fmtEthSymbol, poolTypeName, shortenAddress } from "@/lib/utils";
+import { TrustScoreBadge, useTrustScore } from "@/components/TrustScore";
 
 export default function DashboardPage() {
   const { address, isAdmin, wrongNetwork, contract } = useWeb3();
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [withdrawable, setWithdrawable] = useState(0n);
   const [fetching, setFetching] = useState(true);
   const [myStats, setMyStats] = useState({ totalContributed: 0n, groupCount: 0, activeLoans: 0 });
+  const { scoreData } = useTrustScore();
 
   const refresh = useCallback(async () => {
     if (!contract) return;
@@ -49,6 +51,8 @@ export default function DashboardPage() {
         let isMember = false;
         let myContrib = 0n;
         let hasLoan = false;
+        let hasWon = false;
+        let loanEligible = false;
 
         if (address) {
           const addrLower = address.toLowerCase();
@@ -58,9 +62,14 @@ export default function DashboardPage() {
               const md = await getMemberData(i, m);
               myContrib = md.totalContributed;
               totalContrib += md.totalContributed;
+              hasWon = md.hasWon;
               if (md.hasActiveLoan) {
                 activeLoans++;
                 hasLoan = true;
+              }
+              // Eligible for loan: member, not won, no active loan, scheme started
+              if (md.isActive && !md.hasWon && !md.hasActiveLoan && info.memberCount >= info.maxMembers) {
+                loanEligible = true;
               }
               break;
             }
@@ -75,6 +84,8 @@ export default function DashboardPage() {
           isMember,
           myContrib,
           hasLoan,
+          hasWon,
+          loanEligible,
         });
       }
 
@@ -252,7 +263,7 @@ export default function DashboardPage() {
           {address && !wrongNetwork && (
             <>
               {/* KPI Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">
+              <div className={`grid grid-cols-1 gap-8 pt-4 ${isAdmin ? "md:grid-cols-5" : "md:grid-cols-4"}`}>
                 <div className="luxury-glass p-8 flex flex-col gap-4 relative overflow-hidden group rounded-custom">
                   <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">My Circles</p>
                   <p className="text-4xl font-extrabold text-luxury-cream">{myStats.groupCount}</p>
@@ -260,6 +271,19 @@ export default function DashboardPage() {
                 <div className="luxury-glass p-8 flex flex-col gap-4 relative overflow-hidden group rounded-custom">
                   <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Total Contributed</p>
                   <p className="text-4xl font-extrabold text-luxury-cream">{fmtEthSymbol(myStats.totalContributed)}</p>
+                </div>
+                <div className="luxury-glass p-8 flex flex-col gap-4 relative overflow-hidden group rounded-custom">
+                  <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Trust Score</p>
+                  {scoreData ? (
+                    <div className="flex items-center gap-3">
+                      <p className={`text-4xl font-extrabold ${scoreData.grade.color}`}>{scoreData.score}</p>
+                      <div className={`px-2.5 py-1 rounded-lg ${scoreData.grade.bg} ${scoreData.grade.border} border`}>
+                        <span className={`text-sm font-black ${scoreData.grade.color}`}>{scoreData.grade.letter}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-4xl font-extrabold text-luxury-cream/30">—</p>
+                  )}
                 </div>
                 <div className="luxury-glass p-8 flex flex-col gap-4 relative overflow-hidden group rounded-custom">
                   <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Active Loans</p>
@@ -390,6 +414,18 @@ export default function DashboardPage() {
                                 <div className="flex flex-col gap-1.5 items-start">
                                   {g.isMember && (
                                     <span className="px-2 py-0.5 text-[9px] rounded-full font-black border bg-[#D5BF86]/10 text-[#D5BF86] border-[#D5BF86]/20 uppercase tracking-wider">✓ Enrolled</span>
+                                  )}
+                                  {g.hasLoan && (
+                                    <span className="px-2 py-0.5 text-[9px] rounded-full font-black border bg-orange-500/10 text-orange-400 border-orange-500/20 uppercase tracking-wider">⚡ Loan Active</span>
+                                  )}
+                                  {g.loanEligible && (
+                                    <Link
+                                      href={`/circle/${g.id}#loan`}
+                                      className="px-2 py-0.5 text-[9px] rounded-full font-black border bg-amber-500/10 text-amber-400 border-amber-500/20 uppercase tracking-wider hover:bg-amber-500/20 transition-colors flex items-center gap-1"
+                                    >
+                                      <span className="material-symbols-outlined text-[11px]">request_quote</span>
+                                      Get Loan
+                                    </Link>
                                   )}
                                   <Link
                                     href={`/circle/${g.id}`}
