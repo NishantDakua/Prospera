@@ -22,7 +22,7 @@ export async function query(text, params) {
   try {
     const result = await client.query(text, params);
     return result;
-  } finally {
+  } finally { 
     client.release();
   }
 }
@@ -159,14 +159,14 @@ export async function initDB() {
   const adminCheck = await query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
   if (adminCheck.rows.length === 0) {
     const bcrypt = await import("bcryptjs");
-    const hash = await bcrypt.hash("admin123456", 12);
+    const hash = await bcrypt.hash("admin123", 12);
     await query(
       `INSERT INTO users (email, password_hash, full_name, role, is_verified)
        VALUES ($1, $2, $3, 'admin', TRUE)
        ON CONFLICT (email) DO UPDATE SET role = 'admin', is_verified = TRUE`,
-      ["admin@prospera.io", hash, "Platform Admin"]
+      ["admin@gmail.com", hash, "Platform Admin"]
     );
-    console.log("🔑 Seeded admin: admin@prospera.io / admin123456");
+    console.log("🔑 Seeded admin: admin@gmail.com / admin123");
   }
 
   return { success: true };

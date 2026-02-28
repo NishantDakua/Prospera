@@ -13,7 +13,7 @@ export default function BiddingPage() {
                             <div className="size-10 bg-gradient-to-br from-[#D5BF86] to-[#A71D31] rounded-xl flex items-center justify-center shadow-lg">
                                 <span className="material-symbols-outlined text-[#0F0F14] font-bold">toll</span>
                             </div>
-                            <h2 className="text-white text-2xl font-extrabold tracking-tighter">CIRCLE<span className="text-gold-b">SAVE</span></h2>
+                            <h2 className="text-white text-2xl font-extrabold tracking-tighter">Prospera</h2>
                         </div>
                         <nav className="hidden lg:flex items-center gap-10">
                             <Link className="text-white/60 hover:text-[#D5BF86] transition-colors text-sm font-bold uppercase tracking-widest" href="/dashboard">Dashboard</Link>
