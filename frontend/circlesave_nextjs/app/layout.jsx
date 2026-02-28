@@ -2,6 +2,7 @@ import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import { Web3Provider } from "@/context/Web3Provider";
 import { AuthProvider } from "@/context/AuthProvider";
+import AiAssistant from "@/components/AiAssistant";
 
 export const metadata = {
     title: "Prospera | Premium Collaborative Savings",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }) {
                             }}
                         />
                         {children}
+                        <AiAssistant />
                     </Web3Provider>
                 </AuthProvider>
             </body>

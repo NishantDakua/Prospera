@@ -72,7 +72,7 @@ export default function LearnPage() {
               <span className="material-symbols-outlined text-white text-2xl">account_balance_wallet</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">CircleSave</h1>
+              <h1 className="text-luxury-cream text-xl font-extrabold tracking-tight">Prospera</h1>
               <p className="text-luxury-gold/60 text-[10px] uppercase tracking-widest font-bold">On-Chain</p>
             </div>
           </Link>
