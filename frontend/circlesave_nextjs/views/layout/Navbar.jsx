@@ -34,7 +34,7 @@ export default function Navbar() {
                         </span>
                     </div>
                     <span className="text-2xl font-serif font-black tracking-tight text-brand-ivory">
-                        CircleSave
+                        Prospera
                     </span>
                 </Link>
 
