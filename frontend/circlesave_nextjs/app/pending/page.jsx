@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthProvider";
 import Navbar from "@/views/layout/Navbar";
@@ -8,6 +9,19 @@ export default function PendingPage() {
   const { user, isKycDone, isVerified } = useAuth();
 
   const kycStatus = user?.kycStatus || "pending";
+  const [kycData, setKycData] = useState(null);
+
+  // Fetch KYC details so we can show rejection reason + submitted info
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/kyc");
+        const data = await res.json();
+        if (data.kyc) setKycData(data.kyc);
+      } catch { /* ignore */ }
+    })();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-luxury-dark">
@@ -68,16 +82,55 @@ export default function PendingPage() {
               <h1 className="text-4xl font-serif font-black text-red-400 mb-4">
                 Verification Rejected
               </h1>
-              <p className="text-luxury-gold/60 text-lg mb-8 max-w-lg mx-auto">
-                Unfortunately your KYC submission was rejected. Please review your details and resubmit. 
-                If you believe this is an error, contact support.
+
+              {/* Admin Feedback */}
+              {kycData?.rejectionReason && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 mb-8 text-left max-w-lg mx-auto">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-red-400 text-xl mt-0.5">feedback</span>
+                    <div>
+                      <p className="text-red-400 text-[10px] font-black uppercase tracking-widest mb-1">Admin Feedback</p>
+                      <p className="text-red-300/90 text-sm leading-relaxed">&ldquo;{kycData.rejectionReason}&rdquo;</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Submitted Details Summary */}
+              {kycData && (
+                <div className="max-w-lg mx-auto mb-8 text-left">
+                  <p className="text-luxury-gold/40 text-[10px] font-black uppercase tracking-widest mb-3 text-center">Your Submitted Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ["Name", user?.fullName],
+                      ["DOB", kycData.dateOfBirth],
+                      ["Gender", kycData.gender],
+                      ["Address", kycData.addressLine],
+                      ["City", kycData.city],
+                      ["State", kycData.state],
+                      ["Pincode", kycData.pincode],
+                      ["Aadhaar", kycData.aadhaarNumber],
+                      ["PAN", kycData.panNumber],
+                      ["Nominee", kycData.nomineeName || "—"],
+                    ].map(([label, val]) => (
+                      <div key={label} className="bg-white/5 border border-white/5 rounded-lg p-3 min-w-0">
+                        <p className="text-luxury-gold/40 text-[9px] font-bold uppercase tracking-widest">{label}</p>
+                        <p className="text-luxury-cream text-xs font-bold break-all">{val || "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-luxury-gold/60 text-sm mb-6 max-w-lg mx-auto">
+                Please review the feedback above, correct any issues, and resubmit. Your previous details will be pre-filled.
               </p>
               <Link
                 href="/verify"
                 className="inline-flex items-center gap-3 premium-gradient text-white font-bold uppercase tracking-widest px-10 py-4 rounded-sm text-sm hover:brightness-110 transition-all shadow-xl shadow-luxury-crimson/20"
               >
-                Resubmit KYC
-                <span className="material-symbols-outlined text-lg">refresh</span>
+                Fix &amp; Resubmit KYC
+                <span className="material-symbols-outlined text-lg">edit</span>
               </Link>
             </>
           )}

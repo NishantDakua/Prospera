@@ -7,16 +7,35 @@ import { useWeb3 } from "@/context/Web3Provider";
 import { useAuth } from "@/context/AuthProvider";
 import useContract from "@/hooks/useContract";
 import ConnectWallet from "@/views/ui/ConnectWallet";
-import { fmtEthSymbol, shortenAddress, poolTypeName } from "@/lib/utils";
+import { fmtEth, fmtEthSymbol, shortenAddress, poolTypeName } from "@/lib/utils";
+import { exportTransactionsPDF } from "@/lib/exportPdf";
+
+/** Transaction display metadata */
+const TX_META = {
+    join:       { icon: "person_add",         bg: "bg-blue-500/15 text-blue-400",      label: () => "Joined Circle (Security Deposit)" },
+    contribute: { icon: "account_balance",    bg: "bg-amber-500/15 text-amber-400",    label: (tx) => `Contributed — Round ${tx.round ?? "?"}` },
+    bid:        { icon: "gavel",              bg: "bg-purple-500/15 text-purple-400",   label: () => "Placed Auction Bid" },
+    credit:     { icon: "savings",            bg: "bg-emerald-500/15 text-emerald-400", label: (tx) => {
+        const reasons = { round_winner: "Round Won — Payout", auction_surplus: "Auction Surplus Share", deposit_refund: "Security Deposit Returned", loan: "Loan Issued" };
+        return reasons[tx.reason] || "Balance Credited";
+    }},
+    won_round:  { icon: "emoji_events",       bg: "bg-yellow-500/15 text-yellow-400",  label: (tx) => `Won Round ${tx.round ?? "?"}` },
+    withdraw:   { icon: "account_balance_wallet", bg: "bg-emerald-500/15 text-emerald-400", label: () => "Withdrawal to Wallet" },
+    _default:   { icon: "receipt",            bg: "bg-white/10 text-white/40",         label: () => "Transaction" },
+};
 
 export default function ProfilePage() {
     const { address, isAdmin, wrongNetwork, walletConflict, contract, connect, connecting } = useWeb3();
     const { user, role, isAdmin: isAdminRole, isModerator: isModRole, isVerified, refetchUser } = useAuth();
-    const { getGroupCount, getGroupInfo, getGroupMembers, getMemberData } = useContract();
+    const { getGroupCount, getGroupInfo, getGroupMembers, getMemberData, getTransactionHistory, getWithdrawableBalance, withdrawBalance, loading: contractLoading } = useContract();
 
     const [myGroups, setMyGroups] = useState([]);
     const [totalContributed, setTotalContributed] = useState(0n);
+    const [totalWinnings, setTotalWinnings] = useState(0n);
+    const [withdrawable, setWithdrawable] = useState(0n);
     const [totalLoans, setTotalLoans] = useState(0);
+    const [transactions, setTransactions] = useState([]);
+    const [activeTab, setActiveTab] = useState("circles");
     const [fetching, setFetching] = useState(true);
     const [linkedWallets, setLinkedWallets] = useState([]);
     const [walletActionLoading, setWalletActionLoading] = useState(false);
@@ -152,12 +171,46 @@ export default function ProfilePage() {
             setMyGroups(groups);
             setTotalContributed(contrib);
             setTotalLoans(loans);
+
+            // Fetch withdrawable balance — only for active wallet (withdraw() needs msg.sender)
+            try {
+                const wb = await getWithdrawableBalance(address);
+                console.log("[profile] Withdrawable for", address, ":", wb?.toString());
+                setWithdrawable(wb ?? 0n);
+            } catch (wbErr) {
+                console.error("[profile] getWithdrawableBalance error:", wbErr);
+                setWithdrawable(0n);
+            }
+
+            // Fetch transaction history from on-chain events (for all linked wallets)
+            try {
+                let allTx = [];
+                for (const addr of allAddresses) {
+                    const txs = await getTransactionHistory(addr);
+                    allTx.push(...txs);
+                }
+                // Deduplicate by txHash+type
+                const seen = new Set();
+                allTx = allTx.filter(t => {
+                    const key = `${t.txHash}-${t.type}-${t.extra || ""}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+                allTx.sort((a, b) => b.timestamp - a.timestamp);
+                setTransactions(allTx);
+                // Sum up winnings from credit events
+                const winSum = allTx
+                    .filter(t => t.type === "credit" && (t.reason === "round_winner" || t.reason === "auction_surplus" || t.reason === "deposit_refund"))
+                    .reduce((sum, t) => sum + t.amount, 0n);
+                setTotalWinnings(winSum);
+            } catch { setTransactions([]); setTotalWinnings(0n); }
         } catch (e) {
             console.error("Profile refresh:", e);
         } finally {
             setFetching(false);
         }
-    }, [contract, address, linkedWallets, getGroupCount, getGroupMembers, getGroupInfo, getMemberData]);
+    }, [contract, address, linkedWallets, getGroupCount, getGroupMembers, getGroupInfo, getMemberData, getWithdrawableBalance, getTransactionHistory]);
 
     useEffect(() => {
         refresh();
@@ -611,23 +664,61 @@ export default function ProfilePage() {
                             </section>
 
                             {/* Stats Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-                                <div className="luxury-glass p-8 flex flex-col gap-3 rounded-custom">
-                                    <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Circles Joined</p>
-                                    <p className="text-4xl font-extrabold text-luxury-cream">{myGroups.length}</p>
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+                                <div className="luxury-glass p-6 flex flex-col gap-2 rounded-custom">
+                                    <p className="text-luxury-gold/60 text-[10px] font-bold uppercase tracking-widest">Circles</p>
+                                    <p className="text-3xl font-extrabold text-luxury-cream">{myGroups.length}</p>
                                 </div>
-                                <div className="luxury-glass p-8 flex flex-col gap-3 rounded-custom">
-                                    <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Total Contributed</p>
-                                    <p className="text-4xl font-extrabold text-luxury-cream">{fmtEthSymbol(totalContributed)}</p>
+                                <div className="luxury-glass p-6 flex flex-col gap-2 rounded-custom">
+                                    <p className="text-luxury-gold/60 text-[10px] font-bold uppercase tracking-widest">Contributed</p>
+                                    <p className="text-3xl font-extrabold text-luxury-cream">{fmtEthSymbol(totalContributed)}</p>
                                 </div>
-                                <div className="luxury-glass p-8 flex flex-col gap-3 rounded-custom">
-                                    <p className="text-luxury-gold/60 text-xs font-bold uppercase tracking-widest">Active Loans</p>
-                                    <p className="text-4xl font-extrabold text-luxury-cream">{totalLoans}</p>
+                                <div className="luxury-glass p-6 flex flex-col gap-2 rounded-custom">
+                                    <p className="text-emerald-400/80 text-[10px] font-bold uppercase tracking-widest">Total Winnings</p>
+                                    <p className="text-3xl font-extrabold text-emerald-400">{fmtEthSymbol(totalWinnings)}</p>
+                                </div>
+                                <div className="luxury-glass p-6 flex flex-col gap-2 rounded-custom relative overflow-hidden">
+                                    <p className="text-luxury-gold/60 text-[10px] font-bold uppercase tracking-widest">Withdrawable</p>
+                                    <p className="text-3xl font-extrabold text-luxury-cream">{fmtEthSymbol(withdrawable)}</p>
+                                    {withdrawable > 0n && (
+                                        <button
+                                            onClick={() => withdrawBalance(() => { setWithdrawable(0n); refresh(); })}
+                                            disabled={contractLoading}
+                                            className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                                        >
+                                            Claim
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="luxury-glass p-6 flex flex-col gap-2 rounded-custom">
+                                    <p className="text-luxury-gold/60 text-[10px] font-bold uppercase tracking-widest">Active Loans</p>
+                                    <p className="text-3xl font-extrabold text-luxury-cream">{totalLoans}</p>
                                 </div>
                             </div>
 
-                            {/* My Circles Detail */}
-                            <section className="luxury-glass p-8 rounded-custom">
+                            {/* Tab Navigation */}
+                            <div className="flex gap-2 mb-8">
+                                {["circles", "transactions"].map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-all ${
+                                            activeTab === tab
+                                                ? "bg-luxury-crimson text-white shadow-lg shadow-luxury-crimson/20"
+                                                : "text-luxury-gold/60 hover:text-luxury-gold hover:bg-luxury-gold/5"
+                                        }`}
+                                    >
+                                        <span className="material-symbols-outlined text-base align-middle mr-2">
+                                            {tab === "circles" ? "groups" : "receipt_long"}
+                                        </span>
+                                        {tab === "circles" ? "My Circles" : `Transactions (${transactions.length})`}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Circles Tab */}
+                            {activeTab === "circles" && (
+                            <section className="luxury-glass p-8 rounded-custom mb-12">
                                 <h3 className="text-xl font-bold text-luxury-cream mb-8 tracking-tight">My Circle Participation</h3>
                                 {fetching ? (
                                     <div className="flex items-center justify-center py-12">
@@ -679,6 +770,81 @@ export default function ProfilePage() {
                                     </div>
                                 )}
                             </section>
+                            )}
+
+                            {/* Transactions Tab */}
+                            {activeTab === "transactions" && (
+                            <section className="luxury-glass p-8 rounded-custom mb-12">
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-xl font-bold text-luxury-cream tracking-tight">Transaction History</h3>
+                                    {transactions.length > 0 && (
+                                        <button
+                                            onClick={() => exportTransactionsPDF({
+                                                transactions,
+                                                address,
+                                                userName: user?.name || user?.email || "",
+                                                totalContributed,
+                                                totalWinnings,
+                                                withdrawable,
+                                                circleCount: myGroups.length,
+                                            })}
+                                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-luxury-crimson/10 border border-luxury-crimson/30 text-luxury-crimson hover:bg-luxury-crimson hover:text-white text-xs font-bold uppercase tracking-widest transition-all"
+                                        >
+                                            <span className="material-symbols-outlined text-base">picture_as_pdf</span>
+                                            Export PDF
+                                        </button>
+                                    )}
+                                </div>
+                                {fetching ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <span className="material-symbols-outlined text-4xl text-luxury-gold animate-spin">progress_activity</span>
+                                    </div>
+                                ) : transactions.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <span className="material-symbols-outlined text-5xl text-luxury-gold/15 mb-4 block">receipt_long</span>
+                                        <p className="text-slate-400">No transactions found on-chain.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {transactions.map((tx, i) => {
+                                            const meta = TX_META[tx.type] || TX_META._default;
+                                            const isIncoming = ["credit", "won_round", "withdraw"].includes(tx.type);
+                                            const isOutgoing = ["join", "contribute"].includes(tx.type);
+                                            return (
+                                                <div key={tx.txHash + i} className="flex items-center gap-4 p-5 rounded-xl border border-luxury-gold/10 bg-luxury-gold/[0.02] hover:bg-luxury-gold/5 transition-all">
+                                                    <div className={`size-11 rounded-xl flex items-center justify-center shrink-0 ${meta.bg}`}>
+                                                        <span className="material-symbols-outlined text-xl">{meta.icon}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-luxury-cream font-bold text-sm">{meta.label(tx)}</p>
+                                                        <p className="text-luxury-gold/40 text-xs mt-0.5">
+                                                            {new Date(tx.timestamp * 1000).toLocaleString()}
+                                                            {tx.groupId != null && ` • Circle #${tx.groupId}`}
+                                                            {tx.round != null && ` • Round ${tx.round}`}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        {tx.amount > 0n && (
+                                                            <p className={`font-bold text-sm ${
+                                                                isIncoming ? "text-emerald-400" : isOutgoing ? "text-red-400" : "text-luxury-cream"
+                                                            }`}>
+                                                                {isIncoming ? "+" : isOutgoing ? "-" : ""}{fmtEth(tx.amount)} ETH
+                                                            </p>
+                                                        )}
+                                                        <p
+                                                            title={tx.txHash}
+                                                            className="text-luxury-gold/30 text-[10px] font-mono"
+                                                        >
+                                                            {tx.txHash?.slice(0, 10)}…
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </section>
+                            )}
 
                             {/* Network Info */}
                             <section className="mt-12 luxury-glass p-8 rounded-custom">

@@ -182,9 +182,9 @@ function KycReviewTab() {
                 ["Nominee", kycDetail.nomineeName],
                 ["Relation", kycDetail.nomineeRelation],
               ].map(([label, val]) => (
-                <div key={label} className="bg-white/5 rounded-lg p-3">
+                <div key={label} className="bg-white/5 rounded-lg p-3 min-w-0">
                   <p className="text-luxury-gold/40 text-[10px] font-bold uppercase tracking-widest mb-1">{label}</p>
-                  <p className="text-luxury-cream font-mono text-xs">{val || "—"}</p>
+                  <p className="text-luxury-cream font-mono text-xs break-all">{val || "—"}</p>
                 </div>
               ))}
             </div>

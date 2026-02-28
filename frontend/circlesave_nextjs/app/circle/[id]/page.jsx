@@ -17,15 +17,18 @@ export default function CircleDetailPage() {
   const {
     loading,
     getGroupInfo,
+    getGroupTiming,
     getGroupMembers,
     getMemberData,
     getMemberBid,
+    getWithdrawableBalance,
     joinGroup,
     contribute,
     placeBid,
-    selectWinner,
+    settleRound,
     issueLoan,
     liquidateMember,
+    withdrawBalance,
   } = useContract();
 
   // ── State ──────────────────────────────────────────────────
@@ -37,6 +40,15 @@ export default function CircleDetailPage() {
   const [bidAmount, setBidAmount] = useState("");
   const [loanInputs, setLoanInputs] = useState({});
   const [fetching, setFetching] = useState(true);
+  const [timing, setTiming] = useState(null);
+  const [myWithdrawable, setMyWithdrawable] = useState(0n);
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+
+  // Live clock — update every second for countdown accuracy
+  useEffect(() => {
+    const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // ── Refresh data ───────────────────────────────────────────
   const refresh = useCallback(async () => {
@@ -45,6 +57,9 @@ export default function CircleDetailPage() {
     try {
       const info = await getGroupInfo(groupId);
       setGroup(info);
+
+      const t = await getGroupTiming(groupId);
+      setTiming(t);
 
       const mems = await getGroupMembers(groupId);
       setMembers(mems);
@@ -62,13 +77,15 @@ export default function CircleDetailPage() {
         setMyData(md);
         const mb = await getMemberBid(groupId, address);
         setMyBid(mb);
+        const wb = await getWithdrawableBalance(address);
+        setMyWithdrawable(wb);
       }
     } catch (e) {
       console.error("Failed to load group:", e);
     } finally {
       setFetching(false);
     }
-  }, [groupId, address, getGroupInfo, getGroupMembers, getMemberData, getMemberBid]);
+  }, [groupId, address, getGroupInfo, getGroupTiming, getGroupMembers, getMemberData, getMemberBid, getWithdrawableBalance]);
 
   useEffect(() => {
     refresh();
@@ -100,8 +117,12 @@ export default function CircleDetailPage() {
     placeBid(groupId, bidWei, refresh);
   };
 
-  const handleSelectWinner = () => {
-    selectWinner(groupId, refresh);
+  const handleSettleRound = () => {
+    settleRound(groupId, refresh);
+  };
+
+  const handleWithdraw = () => {
+    withdrawBalance(refresh);
   };
 
   const handleIssueLoan = (memberAddr) => {
@@ -130,6 +151,23 @@ export default function CircleDetailPage() {
   const netPool = grossPool - platformFee;
   const isAuction = group?.poolType === 0;
   const hasBid = myBid > 0n;
+
+  // ── Timing helpers ─────────────────────────────────────────
+  const roundOpen = timing?.roundOpen ?? false;
+  const roundDeadline = timing?.roundDeadline ?? 0;
+  const canSettle = roundOpen && roundDeadline > 0 && now >= roundDeadline;
+
+  const fmtCountdown = (deadline) => {
+    if (!deadline || deadline === 0) return "—";
+    const diff = deadline - now;
+    if (diff <= 0) return "Expired";
+    const h = Math.floor(diff / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const s = diff % 60;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
 
   // ── Circle Phase ───────────────────────────────────────────
   // "start"     → just created, no members yet
@@ -258,7 +296,7 @@ export default function CircleDetailPage() {
               <span className="material-symbols-outlined text-[#0F0F14] font-bold">toll</span>
             </div>
             <h2 className="text-white text-2xl font-extrabold tracking-tighter">
-              CIRCLE<span className="text-gold-b">SAVE</span>
+              Prospera
             </h2>
           </Link>
           <nav className="hidden lg:flex items-center gap-10">
@@ -322,16 +360,30 @@ export default function CircleDetailPage() {
 
               {/* Round funding status (only shown when live) */}
               {circlePhase === "live" && (
-                group.poolAmount === 0n ? (
-                  <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
-                    <span className="material-symbols-outlined text-sm">pending_actions</span>
-                    Round {group.currentRound} — Awaiting contributions ({fmtEth(group.contributionAmount)} ETH each)
-                  </div>
+                roundOpen ? (
+                  canSettle ? (
+                    <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
+                      <span className="material-symbols-outlined text-sm">gavel</span>
+                      Bidding closed — Ready to settle Round {group.currentRound}
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                      Bidding closes in {fmtCountdown(roundDeadline)}
+                    </div>
+                  )
                 ) : (
-                  <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
-                    <span className="material-symbols-outlined text-sm">payments</span>
-                    Pool funded — {fmtEth(group.poolAmount)} ETH{isAuction ? " · Bidding open" : " · Admin selects winner"}
-                  </div>
+                  group.poolAmount === 0n ? (
+                    <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 text-amber-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
+                      <span className="material-symbols-outlined text-sm">pending_actions</span>
+                      Round {group.currentRound} — Awaiting contributions ({fmtEth(group.contributionAmount)} ETH each)
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 bg-sky-500/10 border border-sky-500/20 text-sky-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest">
+                      <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                      Round {group.currentRound} — Waiting for round window to open
+                    </div>
+                  )
                 )
               )}
             </div>
@@ -392,21 +444,9 @@ export default function CircleDetailPage() {
                   <span className="text-emerald-400 text-sm font-bold">Net Pool (90%)</span>
                   <span className="text-emerald-400 font-bold">{fmtEthSymbol(netPool)}</span>
                 </div>
-                {isAuction && group.lowestBid > 0n && (
-                  <div className="flex justify-between items-center py-3 border-b border-white/5">
-                    <span className="text-[#D5BF86] text-sm">Lowest Bid (Auction discount)</span>
-                    <span className="text-[#D5BF86] font-bold">-{fmtEthSymbol(group.lowestBid)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between items-center py-3 bg-white/[0.02] rounded-lg px-4">
-                  <span className="text-white text-sm font-black">Estimated Payout</span>
-                  <span className="text-[#D5BF86] text-xl font-black">
-                    {fmtEthSymbol(
-                      isAuction && group.lowestBid > 0n
-                        ? netPool - group.lowestBid
-                        : netPool
-                    )}
-                  </span>
+                  <span className="text-white text-sm font-black">Estimated Payout (90%)</span>
+                  <span className="text-[#D5BF86] text-xl font-black">{fmtEthSymbol(netPool)}</span>
                 </div>
               </div>
             </div>
@@ -423,8 +463,9 @@ export default function CircleDetailPage() {
                     <tr>
                       <th className="pb-4">Address</th>
                       <th className="pb-4">Contributed</th>
+                      <th className="pb-4">Round</th>
                       <th className="pb-4">Status</th>
-                      <th className="pb-4">Loan</th>
+                      <th className="pb-4">Deposit</th>
                       {isAdmin && <th className="pb-4">Actions</th>}
                     </tr>
                   </thead>
@@ -442,6 +483,17 @@ export default function CircleDetailPage() {
                           </td>
                           <td className="py-4">{fmtEthSymbol(d.totalContributed)}</td>
                           <td className="py-4">
+                            {circlePhase === "live" ? (
+                              d.contributedThisRound ? (
+                                <span className="text-emerald-400 text-[10px] font-black">✓ PAID</span>
+                              ) : (
+                                <span className="text-amber-400 text-[10px] font-black">PENDING</span>
+                              )
+                            ) : (
+                              <span className="text-slate-500 text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="py-4">
                             {!d.isActive ? (
                               <span className="text-red-400 text-xs font-bold">LIQUIDATED</span>
                             ) : d.hasWon ? (
@@ -451,12 +503,10 @@ export default function CircleDetailPage() {
                             )}
                           </td>
                           <td className="py-4">
-                            {d.hasActiveLoan ? (
-                              <span className="text-red-400 text-xs">
-                                {fmtEth(d.loanAmount)} + {fmtEth(d.loanInterest)} int.
-                              </span>
+                            {d.depositUsed ? (
+                              <span className="text-red-400 text-[10px] font-black">USED</span>
                             ) : (
-                              <span className="text-slate-500 text-xs">None</span>
+                              <span className="text-emerald-400 text-[10px] font-black">INTACT</span>
                             )}
                           </td>
                           {isAdmin && (
@@ -546,6 +596,34 @@ export default function CircleDetailPage() {
 
           {/* ─────────────── Right Column ─────────────── */}
           <div className="lg:col-span-4 space-y-8">
+            {/* ── Withdraw Panel — shown when user has funds to collect ── */}
+            {address && myWithdrawable > 0n && (
+              <div className="bg-emerald-500/5 border-2 border-emerald-500/30 rounded-[2rem] p-8 text-center shadow-2xl shadow-emerald-500/10">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl text-emerald-400">account_balance_wallet</span>
+                </div>
+                <h3 className="text-white font-black text-lg mb-1">Funds Available</h3>
+                <p className="text-emerald-400 text-3xl font-black mb-2">{fmtEthSymbol(myWithdrawable)}</p>
+                <p className="text-slate-400 text-xs mb-6">
+                  Winnings, surplus, or deposit refunds ready to withdraw to your wallet.
+                </p>
+                <button
+                  onClick={handleWithdraw}
+                  disabled={loading || wrongNetwork}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50 shadow-lg shadow-emerald-500/20"
+                >
+                  {loading ? (
+                    <span className="animate-spin material-symbols-outlined">progress_activity</span>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">download</span>
+                      Withdraw {fmtEthSymbol(myWithdrawable)}
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
             {/* Enrolled but waiting for circle to go live */}
             {isMember && !myData?.hasWon && circlePhase !== "live" && (
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-[2rem] p-8 text-center">
@@ -569,34 +647,56 @@ export default function CircleDetailPage() {
               </div>
             )}
 
-            {/* Contribute / Bid Panel — only when Live */}
+            {/* Contribute / Bid Panel — only when Live and round open */}
             {isMember && !myData?.hasWon && circlePhase === "live" && (
               <div className="bg-[#A71D31] p-[1px] rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(167,29,49,0.3)]">
                 <div className="bg-[#0F0F14] p-8 rounded-[1.95rem] border border-white/5">
+                  {/* Round not open yet */}
+                  {!roundOpen && (
+                    <div className="text-center py-6">
+                      <span className="material-symbols-outlined text-4xl text-sky-400 mb-3 block">hourglass_top</span>
+                      <h3 className="text-white font-black text-lg mb-2">Round {group.currentRound} Not Open</h3>
+                      <p className="text-slate-400 text-sm">
+                        The bidding window hasn&apos;t opened yet. Contribute first to open the round.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Contribute */}
+                  {roundOpen && (
                   <div className="mb-8">
-                    <h3 className="text-xl font-black text-white mb-4">Contribute</h3>
-                    <p className="text-slate-400 text-sm mb-4">
-                      Send Ξ {fmtEth(group.contributionAmount)} for Round {group.currentRound}
-                    </p>
-                    <button
-                      onClick={handleContribute}
-                      disabled={loading || wrongNetwork}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined">payments</span>
-                          Contribute Ξ {fmtEth(group.contributionAmount)}
-                        </>
-                      )}
-                    </button>
+                    <h3 className="text-xl font-black text-white mb-2">Contribute</h3>
+                    {myData?.contributedThisRound ? (
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 mb-4 flex items-center gap-3">
+                        <span className="material-symbols-outlined text-emerald-400">check_circle</span>
+                        <p className="text-emerald-400 text-sm font-bold">You&apos;ve contributed for Round {group.currentRound}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-slate-400 text-sm mb-4">
+                          Send Ξ {fmtEth(group.contributionAmount)} for Round {group.currentRound}
+                        </p>
+                        <button
+                          onClick={handleContribute}
+                          disabled={loading || wrongNetwork}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50"
+                        >
+                          {loading ? (
+                            <span className="animate-spin material-symbols-outlined">progress_activity</span>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined">payments</span>
+                              Contribute Ξ {fmtEth(group.contributionAmount)}
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
                   </div>
+                  )}
 
                   {/* Bid (Auction only) */}
-                  {isAuction && (
+                  {isAuction && roundOpen && (
                     <div className="pt-6 border-t border-white/10">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-xl font-black text-white">Place Bid</h3>
@@ -605,83 +705,87 @@ export default function CircleDetailPage() {
                         </div>
                       </div>
 
+                      {/* Countdown */}
+                      {!canSettle && roundDeadline > 0 && (
+                        <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4 flex items-center justify-between">
+                          <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Bidding closes in</span>
+                          <span className="text-[#D5BF86] font-black text-sm tabular-nums">{fmtCountdown(roundDeadline)}</span>
+                        </div>
+                      )}
+                      {canSettle && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl px-4 py-3 mb-4 text-center">
+                          <p className="text-orange-400 text-xs font-bold">Bidding window closed — awaiting settlement</p>
+                        </div>
+                      )}
+
                       {hasBid && (
                         <div className="bg-[#D5BF86]/10 border border-[#D5BF86]/20 rounded-xl p-4 mb-4">
                           <p className="text-xs text-[#D5BF86] font-bold">Your current bid: Ξ {fmtEth(myBid)}</p>
                         </div>
                       )}
 
-                      {group.lowestBid > 0n && (
-                        <div className="text-center mb-4 bg-white/5 p-4 rounded-xl border border-white/10">
-                          <p className="text-[#D5BF86]/40 text-[10px] font-black uppercase tracking-[0.2em] mb-1">Current Lowest Bid</p>
-                          <p className="text-3xl font-black text-white">{fmtEthSymbol(group.lowestBid)}</p>
-                          <p className="text-xs text-slate-500 mt-1">by {shortenAddress(group.lowestBidder)}</p>
+                      {group.poolAmount > 0n && !canSettle && (
+                        <div className="space-y-4">
+                          <div className="bg-white/5 rounded-xl px-4 py-2 text-xs text-slate-400 flex justify-between">
+                            <span>Current pool</span>
+                            <span className="text-white font-bold">{fmtEthSymbol(group.poolAmount)}</span>
+                          </div>
+                          <div className="bg-white/5 rounded-xl px-4 py-2 text-xs text-slate-400 flex justify-between">
+                            <span>Max valid bid (must be less than pool)</span>
+                            <span className="text-[#D5BF86] font-bold">&lt; {fmtEth(group.poolAmount)} ETH</span>
+                          </div>
+                          <input
+                            type="number"
+                            step="0.001"
+                            min="0.001"
+                            placeholder="Your bid in ETH"
+                            value={bidAmount}
+                            onChange={(e) => setBidAmount(e.target.value)}
+                            className={`w-full bg-white/5 border rounded-xl px-4 py-4 text-white text-lg font-bold outline-none transition-colors ${
+                              bidAmount && parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount))
+                                ? "border-red-500 focus:border-red-400"
+                                : "border-white/10 focus:border-[#D5BF86]"
+                            }`}
+                          />
+                          {bidAmount && parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount)) && (
+                            <p className="text-red-400 text-xs font-bold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">warning</span>
+                              Bid must be less than {fmtEth(group.poolAmount)} ETH (current pool)
+                            </p>
+                          )}
+                          <button
+                            onClick={handleBid}
+                            disabled={
+                              loading || wrongNetwork || !bidAmount ||
+                              parseFloat(bidAmount) <= 0 ||
+                              parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount))
+                            }
+                            className="w-full bg-[#A71D31] hover:bg-[#8B1829] text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-[#A71D31]/30 flex items-center justify-center gap-3 uppercase tracking-[0.1em] text-sm disabled:opacity-50"
+                          >
+                            {loading ? (
+                              <span className="animate-spin material-symbols-outlined">progress_activity</span>
+                            ) : (
+                              <>
+                                Confirm Bid <span className="material-symbols-outlined">gavel</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       )}
-
-                      <div className="space-y-4">
-                        {group.poolAmount === 0n ? (
-                          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
-                            <span className="material-symbols-outlined text-amber-400 text-2xl mb-1 block">hourglass_empty</span>
-                            <p className="text-amber-400 text-xs font-bold">Pool is empty</p>
-                            <p className="text-slate-400 text-xs mt-1">Members must contribute before bidding opens.</p>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="bg-white/5 rounded-xl px-4 py-2 text-xs text-slate-400 flex justify-between">
-                              <span>Current pool</span>
-                              <span className="text-white font-bold">{fmtEthSymbol(group.poolAmount)}</span>
-                            </div>
-                            <div className="bg-white/5 rounded-xl px-4 py-2 text-xs text-slate-400 flex justify-between">
-                              <span>Max valid bid (must be less than pool)</span>
-                              <span className="text-[#D5BF86] font-bold">&lt; {fmtEth(group.poolAmount)} ETH</span>
-                            </div>
-                            <input
-                              type="number"
-                              step="0.001"
-                              min="0.001"
-                              placeholder="Your bid in ETH"
-                              value={bidAmount}
-                              onChange={(e) => setBidAmount(e.target.value)}
-                              className={`w-full bg-white/5 border rounded-xl px-4 py-4 text-white text-lg font-bold outline-none transition-colors ${
-                                bidAmount && parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount))
-                                  ? "border-red-500 focus:border-red-400"
-                                  : "border-white/10 focus:border-[#D5BF86]"
-                              }`}
-                            />
-                            {bidAmount && parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount)) && (
-                              <p className="text-red-400 text-xs font-bold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-sm">warning</span>
-                                Bid must be less than {fmtEth(group.poolAmount)} ETH (current pool)
-                              </p>
-                            )}
-                            <button
-                              onClick={handleBid}
-                              disabled={
-                                loading || wrongNetwork || !bidAmount ||
-                                parseFloat(bidAmount) <= 0 ||
-                                parseFloat(bidAmount) >= parseFloat(formatEther(group.poolAmount))
-                              }
-                              className="w-full bg-[#A71D31] hover:bg-[#8B1829] text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-[#A71D31]/30 flex items-center justify-center gap-3 uppercase tracking-[0.1em] text-sm disabled:opacity-50"
-                            >
-                              {loading ? (
-                                <span className="animate-spin material-symbols-outlined">progress_activity</span>
-                              ) : (
-                                <>
-                                  Confirm Bid <span className="material-symbols-outlined">gavel</span>
-                                </>
-                              )}
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {group.poolAmount === 0n && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
+                          <span className="material-symbols-outlined text-amber-400 text-2xl mb-1 block">hourglass_empty</span>
+                          <p className="text-amber-400 text-xs font-bold">Pool is empty</p>
+                          <p className="text-slate-400 text-xs mt-1">Members must contribute before bidding opens.</p>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {!isAuction && (
+                  {!isAuction && roundOpen && (
                     <div className="pt-6 border-t border-white/10 text-center">
                       <span className="material-symbols-outlined text-4xl text-emerald-400 mb-2 block">casino</span>
-                      <p className="text-sm text-slate-400">Lucky Draw — winner selected randomly by admin.</p>
+                      <p className="text-sm text-slate-400">Lucky Draw — winner selected automatically via block hash when the bidding window closes.</p>
                     </div>
                   )}
                 </div>
@@ -714,30 +818,30 @@ export default function CircleDetailPage() {
               </div>
             )}
 
-            {/* Admin: Select Winner */}
-            {isAdmin && (
-              <div className="glass-card-bidding p-6 rounded-3xl border border-brand-crimson/30">
-                <h3 className="text-sm font-black text-brand-crimson uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <span className="material-symbols-outlined">admin_panel_settings</span>
-                  Admin Controls
+            {/* Settle Round — visible to all when window has expired */}
+            {circlePhase === "live" && canSettle && (
+              <div className="glass-card-bidding p-6 rounded-3xl border border-orange-500/30">
+                <h3 className="text-sm font-black text-orange-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined">gavel</span>
+                  Settle Round {group.currentRound}
                 </h3>
+                <p className="text-slate-400 text-xs mb-4">
+                  The bidding window has closed. Anyone can call settle to distribute the pool and advance to the next round.
+                </p>
                 <button
-                  onClick={handleSelectWinner}
-                  disabled={loading || wrongNetwork || group.poolAmount === 0n}
-                  className="w-full bg-brand-crimson hover:brightness-110 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-wider text-sm disabled:opacity-50 shadow-lg shadow-brand-crimson/20"
+                  onClick={handleSettleRound}
+                  disabled={loading || wrongNetwork}
+                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-wider text-sm disabled:opacity-50 shadow-lg shadow-orange-500/20"
                 >
                   {loading ? (
                     <span className="animate-spin material-symbols-outlined">progress_activity</span>
                   ) : (
                     <>
                       <span className="material-symbols-outlined">emoji_events</span>
-                      Select Winner — Round {group.currentRound}
+                      Settle Round {group.currentRound}
                     </>
                   )}
                 </button>
-                {group.poolAmount === 0n && (
-                  <p className="text-red-400 text-xs mt-3 text-center">Pool is empty — members must contribute first.</p>
-                )}
               </div>
             )}
 

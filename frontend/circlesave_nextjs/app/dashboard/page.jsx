@@ -21,11 +21,14 @@ export default function DashboardPage() {
     getMemberData,
     getPlatformBalance,
     withdrawPlatformFees,
+    getWithdrawableBalance,
+    withdrawBalance,
     loading,
   } = useContract();
 
   const [groups, setGroups] = useState([]);
   const [platformBal, setPlatformBal] = useState(0n);
+  const [withdrawable, setWithdrawable] = useState(0n);
   const [fetching, setFetching] = useState(true);
   const [myStats, setMyStats] = useState({ totalContributed: 0n, groupCount: 0, activeLoans: 0 });
 
@@ -82,12 +85,24 @@ export default function DashboardPage() {
         const pb = await getPlatformBalance();
         setPlatformBal(pb);
       }
+
+      // Check withdrawable balance
+      if (address) {
+        try {
+          const wb = await getWithdrawableBalance(address);
+          console.log("[dashboard] Withdrawable for", address, ":", wb?.toString());
+          setWithdrawable(wb ?? 0n);
+        } catch (wbErr) {
+          console.error("[dashboard] getWithdrawableBalance error:", wbErr);
+          setWithdrawable(0n);
+        }
+      }
     } catch (e) {
       console.error("Dashboard refresh error:", e);
     } finally {
       setFetching(false);
     }
-  }, [contract, address, isAdmin, getGroupCount, getGroupInfo, getGroupMembers, getMemberData, getPlatformBalance]);
+  }, [contract, address, isAdmin, getGroupCount, getGroupInfo, getGroupMembers, getMemberData, getPlatformBalance, getWithdrawableBalance]);
 
   useEffect(() => {
     refresh();
@@ -266,6 +281,33 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* Withdrawable Funds Banner */}
+              {withdrawable > 0n && (
+                <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent p-8">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 blur-[80px] -mr-16 -mt-16" />
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-center gap-5">
+                      <div className="size-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                        <span className="material-symbols-outlined text-emerald-400 text-3xl">account_balance_wallet</span>
+                      </div>
+                      <div>
+                        <p className="text-emerald-400 text-xs font-black uppercase tracking-widest mb-1">Funds Available</p>
+                        <p className="text-luxury-cream text-3xl font-black">{fmtEthSymbol(withdrawable)}</p>
+                        <p className="text-emerald-400/60 text-xs mt-1">Winnings, surplus & deposit refunds ready to claim</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => withdrawBalance(() => { setWithdrawable(0n); refresh(); })}
+                      disabled={loading}
+                      className="flex items-center gap-3 px-8 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-xl">download</span>
+                      Withdraw to Wallet
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Loading */}
               {fetching && (

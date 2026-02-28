@@ -69,6 +69,9 @@ export default function VerifyPage() {
     nomineeRelation: "",
   });
 
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [prefilled, setPrefilled] = useState(false);
+
   // If already KYC done, redirect to dashboard
   useEffect(() => {
     if (!authLoading && isKycDone) {
@@ -82,6 +85,35 @@ export default function VerifyPage() {
       router.push("/login");
     }
   }, [authLoading, user, router]);
+
+  // Pre-fill form from existing KYC data (for resubmission after rejection)
+  useEffect(() => {
+    if (!user || prefilled) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/kyc");
+        const data = await res.json();
+        if (data.kyc && (data.kyc.status === "rejected" || data.kyc.status === "submitted")) {
+          setForm({
+            dateOfBirth: data.kyc.dateOfBirth || "",
+            gender: data.kyc.gender || "",
+            addressLine: data.kyc.addressLine || "",
+            city: data.kyc.city || "",
+            state: data.kyc.state || "",
+            pincode: data.kyc.pincode || "",
+            aadhaarNumber: data.kyc.aadhaarNumber || "",
+            panNumber: data.kyc.panNumber || "",
+            nomineeName: data.kyc.nomineeName || "",
+            nomineeRelation: data.kyc.nomineeRelation || "",
+          });
+          if (data.kyc.rejectionReason) {
+            setRejectionReason(data.kyc.rejectionReason);
+          }
+        }
+      } catch { /* ignore */ }
+      finally { setPrefilled(true); }
+    })();
+  }, [user, prefilled]);
 
   const handleChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
@@ -174,17 +206,35 @@ export default function VerifyPage() {
       </header>
 
       <div className="max-w-4xl mx-auto px-8 py-12">
+        {/* Rejection Banner */}
+        {rejectionReason && (
+          <div className="mb-8 bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-red-400">feedback</span>
+              </div>
+              <div>
+                <h3 className="text-red-400 font-bold text-sm uppercase tracking-widest mb-1">KYC Rejected — Admin Feedback</h3>
+                <p className="text-red-300/80 text-sm leading-relaxed">&ldquo;{rejectionReason}&rdquo;</p>
+                <p className="text-luxury-gold/40 text-xs mt-2">Your previous details have been loaded below. Please fix the issue and resubmit.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Title */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-luxury-crimson/10 border border-luxury-crimson/20 text-luxury-crimson text-[10px] font-black uppercase tracking-widest mb-4">
             <span className="material-symbols-outlined text-sm">security</span>
-            Identity Verification Required
+            {rejectionReason ? "Resubmission Required" : "Identity Verification Required"}
           </div>
           <h1 className="text-3xl font-bold text-luxury-cream tracking-tight mb-2">
-            Complete Your KYC Verification
+            {rejectionReason ? "Fix & Resubmit KYC" : "Complete Your KYC Verification"}
           </h1>
           <p className="text-luxury-gold/60 text-sm max-w-lg mx-auto">
-            As a regulated financial platform, we require identity verification before you can participate in savings circles. Your data is encrypted and stored securely.
+            {rejectionReason
+              ? "Review the admin feedback above, correct any issues in your details, and submit again."
+              : "As a regulated financial platform, we require identity verification before you can participate in savings circles. Your data is encrypted and stored securely."}
           </p>
         </div>
 
@@ -429,8 +479,8 @@ export default function VerifyPage() {
                   title: "Identity Documents",
                   icon: "badge",
                   fields: [
-                    ["Aadhaar", form.aadhaarNumber ? `XXXX XXXX ${form.aadhaarNumber.replace(/\s/g, "").slice(-4)}` : "—"],
-                    ["PAN", form.panNumber ? `${form.panNumber.slice(0, 3)}XXX${form.panNumber.slice(-2).toUpperCase()}` : "—"],
+                    ["Aadhaar", form.aadhaarNumber || "—"],
+                    ["PAN", form.panNumber ? form.panNumber.toUpperCase() : "—"],
                   ],
                 },
                 {
@@ -449,9 +499,9 @@ export default function VerifyPage() {
                   </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {section.fields.map(([label, value]) => (
-                      <div key={label}>
+                      <div key={label} className="min-w-0">
                         <p className="text-luxury-gold/40 text-[10px] uppercase tracking-widest">{label}</p>
-                        <p className="text-luxury-cream text-sm font-bold capitalize">{value || "—"}</p>
+                        <p className="text-luxury-cream text-sm font-bold capitalize break-all">{value || "—"}</p>
                       </div>
                     ))}
                   </div>

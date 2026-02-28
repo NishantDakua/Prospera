@@ -716,32 +716,57 @@ function CreateCircleTab() {
   const { createGroup, loading } = useContract();
 
   const [contribution, setContribution] = useState("");
-  const [maxMembers, setMaxMembers] = useState("5");
-  const [poolType, setPoolType] = useState("0");
+  const [maxMembers, setMaxMembers]     = useState("4");
+  const [poolType, setPoolType]         = useState("0");
+
+  // Duration fields
+  const [durValue, setDurValue] = useState("4");
+  const [durUnit,  setDurUnit]  = useState("months"); // minutes|hours|days|months|years
+
+  // Bidding window fields
+  const [bidValue, setBidValue] = useState("5");
+  const [bidUnit,  setBidUnit]  = useState("minutes");
+
+  const UNIT_SECONDS = { minutes: 60, hours: 3600, days: 86400, months: 30 * 86400, years: 365 * 86400 };
+
+  const toSeconds = (val, unit) => Math.floor(parseFloat(val || 0) * (UNIT_SECONDS[unit] || 1));
+
+  const totalDurSec  = toSeconds(durValue, durUnit);
+  const biddingWinSec = toSeconds(bidValue, bidUnit);
+  const roundInterval = totalDurSec && maxMembers ? Math.floor(totalDurSec / parseInt(maxMembers || 1)) : 0;
+
+  const fmtDuration = (sec) => {
+    if (!sec) return "—";
+    if (sec < 120)      return `${sec}s`;
+    if (sec < 7200)     return `${Math.round(sec/60)}m`;
+    if (sec < 172800)   return `${Math.round(sec/3600)}h`;
+    if (sec < 60*86400) return `${Math.round(sec/86400)}d`;
+    return `${Math.round(sec/(30*86400))} months`;
+  };
+
+  // Validation
+  const biddingTooLong = biddingWinSec > 0 && roundInterval > 0 && biddingWinSec > roundInterval;
 
   // Auto-connect MetaMask when this tab is opened
-  useEffect(() => {
-    if (!address) connect();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!address) connect(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!contribution || !maxMembers) return;
     if (wrongNetwork) { toast.error("Switch to Anvil (Chain ID 31337)"); return; }
+    if (biddingTooLong) { toast.error("Bidding window exceeds round interval"); return; }
     const contribWei = parseEther(contribution);
-    await createGroup(contribWei, Number(maxMembers), Number(poolType), () => {
+    await createGroup(contribWei, Number(maxMembers), Number(poolType), totalDurSec, biddingWinSec, () => {
       toast.success("Circle deployed on-chain!");
-      setContribution("");
-      setMaxMembers("5");
-      setPoolType("0");
+      setContribution(""); setMaxMembers("4"); setPoolType("0");
+      setDurValue("4"); setDurUnit("months"); setBidValue("5"); setBidUnit("minutes");
     });
   };
 
   const grossPool = contribution && maxMembers
-    ? (parseFloat(contribution) * parseInt(maxMembers || 0)).toFixed(4)
-    : null;
+    ? (parseFloat(contribution) * parseInt(maxMembers || 0)).toFixed(4) : null;
 
-  // Wallet status banner — slim, non-blocking
+  // Wallet status banner
   const walletStatus = () => {
     if (connecting) return { icon: "progress_activity", text: "Connecting wallet…", color: "bg-blue-500/10 border-blue-500/20 text-blue-400", spin: true };
     if (!address) return { icon: "account_balance_wallet", text: "MetaMask not connected — click to connect", color: "bg-amber-500/10 border-amber-500/20 text-amber-400", action: connect };
@@ -749,9 +774,11 @@ function CreateCircleTab() {
     if (!isContractAdmin) return { icon: "lock", text: `Connected (${address.slice(0,6)}…${address.slice(-4)}) — not contract owner`, color: "bg-red-500/10 border-red-500/20 text-red-400" };
     return { icon: "verified", text: `Wallet ready · ${address.slice(0,6)}…${address.slice(-4)}`, color: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" };
   };
-
   const ws = walletStatus();
-  const canDeploy = address && isContractAdmin && !wrongNetwork;
+  const canDeploy = address && isContractAdmin && !wrongNetwork && !biddingTooLong;
+
+  const inputCls = "w-full bg-white/5 border border-white/10 rounded-lg px-4 py-4 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-luxury-crimson focus:border-transparent transition-all outline-none";
+  const selectCls = "bg-white/5 border border-white/10 rounded-lg px-3 py-4 text-luxury-cream focus:ring-2 focus:ring-luxury-crimson focus:border-transparent outline-none text-sm shrink-0";
 
   return (
     <div className="max-w-2xl">
@@ -759,7 +786,6 @@ function CreateCircleTab() {
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <span className="material-symbols-outlined text-9xl text-luxury-gold">group_add</span>
         </div>
-
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-luxury-crimson to-rose-700 flex items-center justify-center">
@@ -771,116 +797,149 @@ function CreateCircleTab() {
             </div>
           </div>
 
-          {/* Slim wallet status bar */}
-          <button
-            type="button"
-            onClick={ws.action}
-            disabled={!ws.action}
+          {/* Wallet status bar */}
+          <button type="button" onClick={ws.action} disabled={!ws.action}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-xs font-bold mb-6 transition-all ${ws.color} ${ws.action ? "hover:brightness-110 cursor-pointer" : "cursor-default"}`}
           >
             <span className={`material-symbols-outlined text-base ${ws.spin ? "animate-spin" : ""}`}>{ws.icon}</span>
             {ws.text}
           </button>
 
-          {/* Form — always shown */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Contribution */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Contribution Amount (ETH)</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-4 material-symbols-outlined text-luxury-gold/50">payments</span>
-                  <input
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-16 py-4 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-luxury-crimson focus:border-transparent transition-all outline-none"
-                    placeholder="0.01"
-                    type="number"
-                    step="0.001"
-                    min="0.001"
-                    value={contribution}
-                    onChange={(e) => setContribution(e.target.value)}
-                    required
-                  />
-                  <span className="absolute right-4 text-luxury-gold/50 font-bold text-sm">ETH</span>
-                </div>
-                <p className="text-luxury-gold/30 text-[10px]">Enter in ETH — e.g. <strong className="text-luxury-gold/50">0.01</strong> means each member pays 0.01 ETH per round. Keep small for testing.</p>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Contribution Amount */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Contribution Amount (ETH)</label>
+              <div className="relative flex items-center">
+                <span className="absolute left-4 material-symbols-outlined text-luxury-gold/50">payments</span>
+                <input className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-16 py-4 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-luxury-crimson focus:border-transparent transition-all outline-none"
+                  placeholder="0.01" type="number" step="0.001" min="0.001"
+                  value={contribution} onChange={(e) => setContribution(e.target.value)} required />
+                <span className="absolute right-4 text-luxury-gold/50 font-bold text-sm">ETH</span>
               </div>
+              <p className="text-luxury-gold/30 text-[10px]">Each member pays this amount as <strong className="text-luxury-gold/50">security deposit</strong> on join, and again as <strong className="text-luxury-gold/50">pool deposit</strong> each round.</p>
+            </div>
 
-              {/* Max Members */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Maximum Members</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-4 material-symbols-outlined text-luxury-gold/50">group</span>
-                  <input
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-4 py-4 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-luxury-crimson focus:border-transparent transition-all outline-none"
-                    placeholder="5"
-                    type="number"
-                    min="2"
-                    max="20"
-                    value={maxMembers}
-                    onChange={(e) => setMaxMembers(e.target.value)}
-                    required
-                  />
-                </div>
+            {/* Max Members */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Number of Members</label>
+              <div className="relative flex items-center">
+                <span className="absolute left-4 material-symbols-outlined text-luxury-gold/50">group</span>
+                <input className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-4 py-4 text-luxury-cream placeholder:text-luxury-gold/20 focus:ring-2 focus:ring-luxury-crimson focus:border-transparent transition-all outline-none"
+                  placeholder="4" type="number" min="2" max="20"
+                  value={maxMembers} onChange={(e) => setMaxMembers(e.target.value)} required />
               </div>
+              <p className="text-luxury-gold/30 text-[10px]">Number of members = number of rounds. Each member wins exactly once.</p>
+            </div>
 
-              {/* Pool Type */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Pool Type</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button type="button" onClick={() => setPoolType("0")}
-                    className={`p-5 rounded-xl border transition-all text-left ${
-                      poolType === "0"
-                        ? "bg-luxury-crimson/20 border-luxury-crimson text-luxury-cream"
-                        : "bg-white/5 border-white/10 text-luxury-gold/50 hover:border-white/20"
-                    }`}>
-                    <span className="material-symbols-outlined text-2xl mb-2 block">gavel</span>
-                    <span className="font-bold text-sm block">Auction</span>
-                    <span className="text-xs opacity-60">Lowest bid wins the pot</span>
-                  </button>
-                  <button type="button" onClick={() => setPoolType("1")}
-                    className={`p-5 rounded-xl border transition-all text-left ${
-                      poolType === "1"
-                        ? "bg-luxury-crimson/20 border-luxury-crimson text-luxury-cream"
-                        : "bg-white/5 border-white/10 text-luxury-gold/50 hover:border-white/20"
-                    }`}>
-                    <span className="material-symbols-outlined text-2xl mb-2 block">casino</span>
-                    <span className="font-bold text-sm block">Lucky Draw</span>
-                    <span className="text-xs opacity-60">Random winner (ROSCA)</span>
-                  </button>
-                </div>
+            {/* Scheme Duration */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Scheme Duration (Total Lifetime)</label>
+              <div className="flex gap-3">
+                <input className={inputCls} placeholder="4" type="number" min="1"
+                  value={durValue} onChange={(e) => setDurValue(e.target.value)} required />
+                <select className={selectCls} value={durUnit} onChange={(e) => setDurUnit(e.target.value)}>
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                  <option value="months">Months</option>
+                  <option value="years">Years</option>
+                </select>
               </div>
+              {totalDurSec > 0 && maxMembers && (
+                <p className="text-luxury-gold/40 text-[10px]">
+                  Round frequency: <strong className="text-luxury-gold/60">1 round every {fmtDuration(roundInterval)}</strong>
+                </p>
+              )}
+            </div>
 
-              {/* Economic Preview */}
-              {grossPool && (
-                <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5 space-y-3">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-luxury-gold mb-3">Economic Preview</h4>
+            {/* Bidding Window */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">
+                {poolType === "0" ? "Bidding Window per Round" : "Draw Window per Round"}
+              </label>
+              <div className="flex gap-3">
+                <input className={`${inputCls} ${biddingTooLong ? "border-red-500/50 focus:ring-red-500" : ""}`}
+                  placeholder="5" type="number" min="1"
+                  value={bidValue} onChange={(e) => setBidValue(e.target.value)} required />
+                <select className={selectCls} value={bidUnit} onChange={(e) => setBidUnit(e.target.value)}>
+                  <option value="minutes">Minutes</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                  <option value="months">Months</option>
+                </select>
+              </div>
+              {biddingTooLong ? (
+                <p className="text-red-400 text-[10px] font-bold">⚠ Bidding window ({fmtDuration(biddingWinSec)}) exceeds round interval ({fmtDuration(roundInterval)}). Reduce it.</p>
+              ) : biddingWinSec > 0 && (
+                <p className="text-luxury-gold/40 text-[10px]">
+                  Window closes <strong className="text-luxury-gold/60">{fmtDuration(biddingWinSec)}</strong> after round opens. After that, anyone can call Settle Round.
+                </p>
+              )}
+            </div>
+
+            {/* Pool Type */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-luxury-gold/60 uppercase tracking-widest">Pool Type</label>
+              <div className="grid grid-cols-2 gap-4">
+                <button type="button" onClick={() => setPoolType("0")}
+                  className={`p-5 rounded-xl border transition-all text-left ${poolType === "0" ? "bg-luxury-crimson/20 border-luxury-crimson text-luxury-cream" : "bg-white/5 border-white/10 text-luxury-gold/50 hover:border-white/20"}`}>
+                  <span className="material-symbols-outlined text-2xl mb-2 block">gavel</span>
+                  <span className="font-bold text-sm block">Auction</span>
+                  <span className="text-xs opacity-60">Lowest bid wins; surplus split equally</span>
+                </button>
+                <button type="button" onClick={() => setPoolType("1")}
+                  className={`p-5 rounded-xl border transition-all text-left ${poolType === "1" ? "bg-luxury-crimson/20 border-luxury-crimson text-luxury-cream" : "bg-white/5 border-white/10 text-luxury-gold/50 hover:border-white/20"}`}>
+                  <span className="material-symbols-outlined text-2xl mb-2 block">casino</span>
+                  <span className="font-bold text-sm block">Lucky Draw</span>
+                  <span className="text-xs opacity-60">Random winner gets full net pool</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Economic Preview */}
+            {grossPool && totalDurSec > 0 && (
+              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-5 space-y-3">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-luxury-gold mb-3">Economic Preview</h4>
+                <div className="flex justify-between text-sm">
+                  <span className="text-luxury-gold/50">Scheme Lifetime</span>
+                  <span className="text-luxury-cream font-bold">{fmtDuration(totalDurSec)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-luxury-gold/50">Round Interval</span>
+                  <span className="text-luxury-cream font-bold">{fmtDuration(roundInterval)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-luxury-gold/50">Bidding Window</span>
+                  <span className="text-luxury-cream font-bold">{fmtDuration(biddingWinSec)}</span>
+                </div>
+                <div className="border-t border-white/10 pt-3 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-luxury-gold/50">Gross Pool (per round)</span>
                     <span className="text-luxury-cream font-bold">{grossPool} ETH</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-luxury-gold/50">Platform Fee (10%)</span>
-                    <span className="text-red-400 font-bold">-{(parseFloat(grossPool) * 0.1).toFixed(4)} ETH</span>
+                    <span className="text-red-400 font-bold">-{(parseFloat(grossPool)*0.1).toFixed(4)} ETH</span>
                   </div>
-                  <div className="border-t border-white/10 pt-3 flex justify-between text-sm">
+                  <div className="flex justify-between text-sm">
                     <span className="text-luxury-cream font-bold">Net Payout</span>
-                    <span className="text-emerald-400 font-bold">{(parseFloat(grossPool) * 0.9).toFixed(4)} ETH</span>
+                    <span className="text-emerald-400 font-bold">{(parseFloat(grossPool)*0.9).toFixed(4)} ETH</span>
                   </div>
                 </div>
-              )}
-
-
-              <button
-                type="submit"
-                disabled={loading || !canDeploy}
-                className="w-full bg-gradient-to-r from-luxury-crimson to-rose-700 hover:brightness-110 text-white font-black uppercase text-sm tracking-widest px-8 py-4 rounded-xl shadow-lg shadow-luxury-crimson/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <><span className="animate-spin material-symbols-outlined text-lg">progress_activity</span>Deploying…</>
-                ) : (
-                  <><span className="material-symbols-outlined text-lg">rocket_launch</span>Deploy Circle</>
+                {poolType === "0" && (
+                  <p className="text-luxury-gold/30 text-[10px] pt-1">Auction: winner receives their bid amount; leftover split equally among all members.</p>
                 )}
-              </button>
-            </form>
+              </div>
+            )}
+
+            <button type="submit" disabled={loading || !canDeploy}
+              className="w-full bg-gradient-to-r from-luxury-crimson to-rose-700 hover:brightness-110 text-white font-black uppercase text-sm tracking-widest px-8 py-4 rounded-xl shadow-lg shadow-luxury-crimson/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? <><span className="animate-spin material-symbols-outlined text-lg">progress_activity</span>Deploying…</>
+                : <><span className="material-symbols-outlined text-lg">rocket_launch</span>Deploy Circle</>}
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -894,21 +953,45 @@ function ManageCirclesTab() {
   const { address, isAdmin: isContractAdmin, wrongNetwork, connect, connecting } = useWeb3();
   const {
     loading,
-    getGroupCount, getGroupInfo, getGroupMembers, getMemberData, getMemberBid,
-    selectWinner, issueLoan, liquidateMember, withdrawPlatformFees, getPlatformBalance,
+    getGroupCount, getGroupInfo, getGroupTiming, getGroupMembers, getMemberData, getMemberBid,
+    settleRound, issueLoan, liquidateMember, withdrawPlatformFees, getPlatformBalance,
   } = useContract();
 
-  const [circles, setCircles] = useState([]);
-  const [fetching, setFetching] = useState(true);
-  const [expanded, setExpanded] = useState(null); // groupId or null
-  const [members, setMembers] = useState([]);     // member details for expanded circle
+  const [circles, setCircles]           = useState([]);
+  const [fetching, setFetching]         = useState(true);
+  const [expanded, setExpanded]         = useState(null);
+  const [members, setMembers]           = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
-  const [platformBal, setPlatformBal] = useState(0n);
+  const [platformBal, setPlatformBal]   = useState(0n);
+  const [now, setNow]                   = useState(Math.floor(Date.now() / 1000));
 
   // Loan form
-  const [loanTarget, setLoanTarget] = useState(null); // { groupId, addr }
-  const [loanAmount, setLoanAmount] = useState("");
+  const [loanTarget, setLoanTarget]   = useState(null);
+  const [loanAmount, setLoanAmount]   = useState("");
   const [loanInterest, setLoanInterest] = useState("");
+
+  // Live clock for countdown
+  useEffect(() => {
+    const t = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fmtCountdown = (deadline) => {
+    const diff = deadline - now;
+    if (diff <= 0) return "Expired";
+    if (diff < 60)   return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ${diff%60}s`;
+    return `${Math.floor(diff/3600)}h ${Math.floor((diff%3600)/60)}m`;
+  };
+
+  const fmtDuration = (sec) => {
+    if (!sec) return "—";
+    if (sec < 120)       return `${sec}s`;
+    if (sec < 7200)      return `${Math.round(sec/60)}m`;
+    if (sec < 172800)    return `${Math.round(sec/3600)}h`;
+    if (sec < 60*86400)  return `${Math.round(sec/86400)}d`;
+    return `${Math.round(sec/(30*86400))} months`;
+  };
 
   const phase = (info) => {
     if (info.memberCount === 0) return { label: "START", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" };
@@ -925,9 +1008,10 @@ function ManageCirclesTab() {
     try {
       const count = await getGroupCount();
       const list = [];
-      for (let i = 0; i < count; i++) {
-        const info = await getGroupInfo(i);
-        list.push({ id: i, ...info });
+      for (let i = 1; i <= count; i++) {
+        const info   = await getGroupInfo(i);
+        const timing = await getGroupTiming(i);
+        list.push({ id: i, ...info, ...timing });
       }
       setCircles(list);
       const bal = await getPlatformBalance();
@@ -937,7 +1021,7 @@ function ManageCirclesTab() {
     } finally {
       setFetching(false);
     }
-  }, [getGroupCount, getGroupInfo, getPlatformBalance]);
+  }, [getGroupCount, getGroupInfo, getGroupTiming, getPlatformBalance]);
 
   useEffect(() => { if (address) fetchCircles(); }, [address, fetchCircles]);
 
@@ -963,11 +1047,11 @@ function ManageCirclesTab() {
   }, [expanded, getGroupMembers, getMemberData, getMemberBid]);
 
   // ── actions ──
-  const handleSelectWinner = async (groupId) => {
-    await selectWinner(groupId, () => {
-      toast.success("Winner selected for Circle #" + groupId);
+  const handleSettleRound = async (groupId) => {
+    await settleRound(groupId, () => {
+      toast.success("Round settled for Circle #" + groupId);
       fetchCircles();
-      if (expanded === groupId) expandCircle(groupId); // refresh member list
+      if (expanded === groupId) expandCircle(groupId);
     });
   };
 
@@ -1094,7 +1178,12 @@ function ManageCirclesTab() {
                         )}
                       </div>
                       <p className="text-luxury-gold/40 text-xs mt-0.5">
-                        {fmtEthSymbol(c.contributionAmount)} contribution · {c.memberCount}/{c.maxMembers} members · Round {c.currentRound}
+                        {fmtEthSymbol(c.contributionAmount)} · {c.memberCount}/{c.maxMembers} members · Round {c.currentRound}/{c.maxMembers}
+                        {c.roundOpen && c.roundDeadline > 0 && (
+                          <span className={`ml-2 font-bold ${c.roundDeadline > now ? "text-amber-400" : "text-emerald-400"}`}>
+                            · {c.roundDeadline > now ? `⏱ ${fmtCountdown(c.roundDeadline)}` : "✓ Ready to settle"}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -1116,11 +1205,11 @@ function ManageCirclesTab() {
                         { label: "Type", value: poolTypeName(c.poolType) },
                         { label: "Contribution", value: fmtEthSymbol(c.contributionAmount) },
                         { label: "Members", value: `${c.memberCount} / ${c.maxMembers}` },
-                        { label: "Round", value: c.currentRound },
+                        { label: "Round", value: `${c.currentRound} / ${c.maxMembers}` },
                         { label: "Pool", value: fmtEthSymbol(c.poolAmount) },
                         { label: "Active", value: c.isActive ? "Yes" : "No" },
-                        { label: "Lowest Bidder", value: c.lowestBidder === "0x0000000000000000000000000000000000000000" ? "—" : shortenAddress(c.lowestBidder) },
-                        { label: "Lowest Bid", value: c.lowestBid > 0n ? fmtEthSymbol(c.lowestBid) : "—" },
+                        { label: "Scheme Duration", value: fmtDuration(c.totalDuration) },
+                        { label: "Bidding Window", value: fmtDuration(c.biddingWindow) },
                       ].map((d) => (
                         <div key={d.label} className="bg-white/[0.03] rounded-lg p-3 border border-white/5">
                           <p className="text-[10px] font-bold text-luxury-gold/40 uppercase tracking-widest">{d.label}</p>
@@ -1129,16 +1218,30 @@ function ManageCirclesTab() {
                       ))}
                     </div>
 
-                    {/* Admin actions for this circle */}
-                    <div className="flex flex-wrap gap-3">
-                      <button
-                        onClick={() => handleSelectWinner(c.id)}
-                        disabled={loading || c.memberCount < c.maxMembers}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        <span className="material-symbols-outlined text-sm">emoji_events</span>Select Winner
-                      </button>
-                    </div>
+                    {/* Round status + Settle button */}
+                    {c.isActive && c.roundOpen && (
+                      <div className="flex items-center justify-between bg-white/[0.03] rounded-xl px-5 py-4 border border-white/10">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-amber-400 text-xl">timer</span>
+                          <div>
+                            <p className="text-luxury-cream font-bold text-sm">Round {c.currentRound} bidding window</p>
+                            {c.roundDeadline > now ? (
+                              <p className="text-amber-400 text-xs font-bold">{fmtCountdown(c.roundDeadline)} remaining</p>
+                            ) : (
+                              <p className="text-emerald-400 text-xs font-bold">Window expired — ready to settle</p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleSettleRound(c.id)}
+                          disabled={loading || c.roundDeadline > now}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          <span className="material-symbols-outlined text-sm">gavel</span>
+                          Settle Round
+                        </button>
+                      </div>
+                    )}
 
                     {/* Member list */}
                     <div>

@@ -16,14 +16,34 @@ export default function CreateGroupPage() {
   const [contribution, setContribution] = useState("");
   const [maxMembers, setMaxMembers] = useState("5");
   const [poolType, setPoolType] = useState("0"); // 0=Auction, 1=LuckyDraw
+  const [durValue, setDurValue] = useState("30");
+  const [durUnit, setDurUnit] = useState("days");
+  const [bidValue, setBidValue] = useState("1");
+  const [bidUnit, setBidUnit] = useState("hours");
+
+  const UNIT_SECONDS = { minutes: 60, hours: 3600, days: 86400, months: 30 * 86400, years: 365 * 86400 };
+  const toSeconds = (v, u) => Math.floor(Number(v) * (UNIT_SECONDS[u] || 1));
+
+  const totalDurSec = toSeconds(durValue, durUnit);
+  const biddingWinSec = toSeconds(bidValue, bidUnit);
+  const membersNum = parseInt(maxMembers) || 0;
+  const roundIntervalSec = membersNum > 0 ? Math.floor(totalDurSec / membersNum) : 0;
+  const biddingTooLong = biddingWinSec > roundIntervalSec && roundIntervalSec > 0;
+
+  const fmtDuration = (sec) => {
+    if (!sec || sec <= 0) return "—";
+    if (sec >= 86400) return `${(sec / 86400).toFixed(1)} days`;
+    if (sec >= 3600) return `${(sec / 3600).toFixed(1)} hours`;
+    return `${(sec / 60).toFixed(1)} min`;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!contribution || !maxMembers) return;
-    if (wrongNetwork) return;
+    if (!contribution || !maxMembers || !durValue || !bidValue) return;
+    if (wrongNetwork || biddingTooLong) return;
 
     const contribWei = parseEther(contribution);
-    await createGroup(contribWei, Number(maxMembers), Number(poolType), () => {
+    await createGroup(contribWei, Number(maxMembers), Number(poolType), totalDurSec, biddingWinSec, () => {
       router.push("/dashboard");
     });
   };
@@ -171,10 +191,90 @@ export default function CreateGroupPage() {
                       >
                         <span className="material-symbols-outlined text-2xl mb-2 block">casino</span>
                         <span className="font-bold text-sm block">Lucky Draw</span>
-                        <span className="text-xs opacity-60">Random winner (ROSCA)</span>
+                        <span className="text-xs opacity-60">Random winner via block hash</span>
                       </button>
                     </div>
                   </div>
+
+                  {/* Scheme Duration */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                      Scheme Duration (total lifetime)
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-4 text-slate-100 placeholder:text-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                        type="number"
+                        min="1"
+                        value={durValue}
+                        onChange={(e) => setDurValue(e.target.value)}
+                        required
+                      />
+                      <select
+                        value={durUnit}
+                        onChange={(e) => setDurUnit(e.target.value)}
+                        className="bg-white/5 border border-white/10 rounded-lg px-4 py-4 text-slate-100 outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="months">Months</option>
+                        <option value="years">Years</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Bidding Window */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                      Bidding Window (per round)
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-4 text-slate-100 placeholder:text-slate-600 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                        type="number"
+                        min="1"
+                        value={bidValue}
+                        onChange={(e) => setBidValue(e.target.value)}
+                        required
+                      />
+                      <select
+                        value={bidUnit}
+                        onChange={(e) => setBidUnit(e.target.value)}
+                        className="bg-white/5 border border-white/10 rounded-lg px-4 py-4 text-slate-100 outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                        <option value="days">Days</option>
+                        <option value="months">Months</option>
+                      </select>
+                    </div>
+                    {biddingTooLong && (
+                      <p className="text-red-400 text-xs font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-sm">warning</span>
+                        Bidding window ({fmtDuration(biddingWinSec)}) exceeds round interval ({fmtDuration(roundIntervalSec)})
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Timing Preview */}
+                  {durValue && bidValue && membersNum > 0 && (
+                    <div className="bg-white/[0.03] border border-white/10 rounded-xl p-6 space-y-3">
+                      <h4 className="text-xs font-black uppercase tracking-widest text-accent-gold mb-4">Timing Preview</h4>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Scheme Lifetime</span>
+                        <span className="text-white font-bold">{fmtDuration(totalDurSec)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Round Interval</span>
+                        <span className="text-white font-bold">{fmtDuration(roundIntervalSec)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-400">Bidding Window</span>
+                        <span className={`font-bold ${biddingTooLong ? "text-red-400" : "text-white"}`}>{fmtDuration(biddingWinSec)}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Economic Preview */}
                   {contribution && maxMembers && (
@@ -218,7 +318,7 @@ export default function CreateGroupPage() {
                     </Link>
                     <button
                       type="submit"
-                      disabled={loading || wrongNetwork}
+                      disabled={loading || wrongNetwork || biddingTooLong}
                       className="bg-primary hover:bg-primary/90 text-white font-bold uppercase text-sm tracking-widest px-10 py-4 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center gap-3 disabled:opacity-50"
                     >
                       {loading ? (
