@@ -110,6 +110,13 @@ export default function useContract() {
     [exec]
   );
 
+  /** Request a P2P loan (member self-service) — 50% of plan value, 18% interest */
+  const requestLoan = useCallback(
+    (groupId, onSuccess) =>
+      exec("Request Loan", (c) => c.requestLoan(groupId), onSuccess),
+    [exec]
+  );
+
   /** Liquidate a member (admin only) — forfeits their security deposit */
   const liquidateMember = useCallback(
     (groupId, memberAddr, onSuccess) =>
@@ -269,6 +276,17 @@ export default function useContract() {
   }, [contract, address]);
 
   /**
+   * Get loan terms for a member in a circle.
+   * Returns { eligible, loanAmount, interest, totalRepay, reason }
+   */
+  const getLoanTerms = useCallback(async (groupId, memberAddr) => {
+    if (!contract) return null;
+    const [eligible, loanAmount, interest, totalRepay, reason] =
+      await contract.getLoanTerms(groupId, memberAddr || address);
+    return { eligible, loanAmount, interest, totalRepay, reason };
+  }, [contract, address]);
+
+  /**
    * Get full transaction history for a user by querying on-chain events.
    * Returns sorted array of { type, groupId, amount, timestamp, txHash, extra }.
    */
@@ -379,6 +397,7 @@ export default function useContract() {
     placeBid,
     settleRound,
     issueLoan,
+    requestLoan,
     liquidateMember,
     withdrawPlatformFees,
     withdrawBalance,
@@ -394,6 +413,7 @@ export default function useContract() {
     getAdmin,
     getRoundInterval,
     getWithdrawableBalance,
+    getLoanTerms,
     getTransactionHistory,
   };
 }

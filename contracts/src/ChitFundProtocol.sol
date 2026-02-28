@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 /**
- * @title ChitFundProtocol v3 — Pull-Payment Edition
+ * @title ChitFundProtocol v4 — P2P Lending Edition
  *
  * Key design:
  * ─────────────────────────────────────────────────────────────────
@@ -32,6 +32,12 @@ pragma solidity ^0.8.20;
  *     5. After all maxMembers rounds complete, scheme ends and
  *        security deposits are credited to withdrawable balances.
  *
+ * • P2P LENDING:
+ *     - Any enrolled member (trust score ≥ 500, checked off-chain) can request a loan.
+ *     - Loan amount = 50% of plan value (contributionAmount × maxMembers).
+ *     - Total repayment = 18% interest (10% platform fee + 8% interest).
+ *     - Auto-deducted from winnings on round settlement.
+ *
  * • PULL-PAYMENT: All payouts (winner, surplus, deposit refunds, loans) are
  *   credited to a withdrawableBalance mapping. Users call withdraw() to collect.
  *   This creates a proper outgoing tx visible in MetaMask.
@@ -46,6 +52,9 @@ contract ChitFundProtocol {
     enum PoolType { Auction, LuckyDraw }
 
     uint256 public constant PLATFORM_FEE_PERCENT = 10;
+    uint256 public constant LOAN_INTEREST_PERCENT = 8;   // 8% interest to the pool
+    uint256 public constant LOAN_PLATFORM_PERCENT = 10;  // 10% platform fee on loan
+    // Total repayment = principal + 18% (8% interest + 10% platform fee)
 
     // ================================================================
     // STORAGE
@@ -112,6 +121,7 @@ contract ChitFundProtocol {
     event SecurityDepositReturned(uint256 indexed groupId, address member, uint256 amount);
     event SchemeCompleted(uint256 indexed groupId);
     event LoanIssued(uint256 indexed groupId, address member, uint256 amount);
+    event LoanRepaid(uint256 indexed groupId, address member, uint256 principal, uint256 interest);
     event MemberLiquidated(uint256 indexed groupId, address member);
     event PlatformWithdrawn(uint256 amount);
     event Withdrawal(address indexed user, uint256 amount);
@@ -261,7 +271,7 @@ contract ChitFundProtocol {
         require(g.roundOpen,                             "Bidding window not open");
         require(!_biddingWindowExpired(g),               "Bidding window closed");
         require(!g.memberData[msg.sender].hasWon,        "Past winners cannot bid");
-        require(g.memberData[msg.sender].contributedThisRound, "Contribute before bidding");
+        // No contribution required to bid — bidding only decides payout amounts
         require(bidAmount > 0,                           "Bid must be > 0");
 
         // Net pool after platform fee — bid must be <= this
@@ -372,10 +382,12 @@ contract ChitFundProtocol {
             uint256 totalLoan = wm.loanAmount + wm.loanInterest;
             if (winnerPayout >= totalLoan) {
                 winnerPayout       -= totalLoan;
-                platformBalance    += totalLoan; // loan repayment goes to platform
+                platformBalance    += totalLoan; // full repayment (principal + interest) goes to platform treasury
+                emit LoanRepaid(groupId, winner, wm.loanAmount, wm.loanInterest);
             } else {
                 // payout covers partial; rest forgiven for simplicity
                 platformBalance    += winnerPayout;
+                emit LoanRepaid(groupId, winner, winnerPayout, 0);
                 winnerPayout        = 0;
             }
             wm.loanAmount     = 0;
@@ -501,9 +513,51 @@ contract ChitFundProtocol {
     }
 
     // ================================================================
-    // LOAN SYSTEM  (admin only)
+    // P2P LOAN SYSTEM  (member-initiated, trust-score checked off-chain)
     // ================================================================
 
+    /**
+     * @notice Request a loan against your enrolled circle.
+     *         Eligibility: active member, not yet won, no existing loan,
+     *         scheme must be started (full circle), trust score ≥ 500 (checked off-chain).
+     *         Loan = 50% of plan value (contributionAmount × maxMembers).
+     *         Repayment = principal + 18% (10% platform + 8% interest).
+     *         Auto-deducted from winner payout on settleRound().
+     */
+    function requestLoan(uint256 groupId)
+        external
+        onlyActiveGroup(groupId)
+        onlyMember(groupId)
+    {
+        Group storage g = groups[groupId];
+        Member storage m = g.memberData[msg.sender];
+
+        require(g.schemeStartTime > 0,  "Scheme not started yet");
+        require(!m.hasWon,              "Already won - not eligible");
+        require(!m.hasActiveLoan,       "Loan already active");
+
+        // Loan = 50% of plan value
+        uint256 planValue  = g.contributionAmount * g.maxMembers;
+        uint256 loanAmount = planValue / 2;
+
+        // Interest = 18% total (10% platform fee + 8% interest)
+        uint256 totalInterestPercent = LOAN_PLATFORM_PERCENT + LOAN_INTEREST_PERCENT;
+        uint256 interest = (loanAmount * totalInterestPercent) / 100;
+
+        m.loanAmount    = loanAmount;
+        m.loanInterest  = interest;
+        m.hasActiveLoan = true;
+
+        // Credit loan to withdrawable balance (pull-payment)
+        withdrawableBalance[msg.sender] += loanAmount;
+        emit BalanceCredited(msg.sender, loanAmount, "loan");
+        emit LoanIssued(groupId, msg.sender, loanAmount);
+    }
+
+    /**
+     * @notice Admin can also issue a custom loan (backwards compatibility).
+     *         Same rules apply but admin sets amount & interest.
+     */
     function issueLoan(
         uint256 groupId,
         address member,
@@ -516,8 +570,8 @@ contract ChitFundProtocol {
         require(!m.hasWon,         "Already won");
         require(!m.hasActiveLoan,  "Loan already active");
 
-        uint256 maxLoan = g.poolAmount / 2;
-        require(loanAmount <= maxLoan, "Exceeds 50% of pool");
+        uint256 maxLoan = (g.contributionAmount * g.maxMembers) / 2;
+        require(loanAmount <= maxLoan, "Exceeds 50% of plan value");
 
         m.loanAmount    = loanAmount;
         m.loanInterest  = interest;
@@ -680,5 +734,42 @@ contract ChitFundProtocol {
         external view returns (uint256)
     {
         return withdrawableBalance[user];
+    }
+
+    /**
+     * @notice Check if a member is eligible for a loan and return loan terms.
+     * @return eligible     Whether the member can request a loan
+     * @return loanAmount   50% of plan value
+     * @return interest     18% of loanAmount (10% platform + 8% interest)
+     * @return totalRepay   loanAmount + interest
+     * @return reason       Human-readable reason if not eligible
+     */
+    function getLoanTerms(uint256 groupId, address member)
+        external view
+        groupExists(groupId)
+        returns (
+            bool    eligible,
+            uint256 loanAmount,
+            uint256 interest,
+            uint256 totalRepay,
+            string memory reason
+        )
+    {
+        Group storage g = groups[groupId];
+        Member storage m = g.memberData[member];
+
+        uint256 planValue = g.contributionAmount * g.maxMembers;
+        loanAmount = planValue / 2;
+        uint256 totalInterestPercent = LOAN_PLATFORM_PERCENT + LOAN_INTEREST_PERCENT;
+        interest   = (loanAmount * totalInterestPercent) / 100;
+        totalRepay = loanAmount + interest;
+
+        if (!g.isActive)           return (false, loanAmount, interest, totalRepay, "Circle not active");
+        if (g.schemeStartTime == 0) return (false, loanAmount, interest, totalRepay, "Scheme not started");
+        if (!m.isActive)           return (false, loanAmount, interest, totalRepay, "Not a member");
+        if (m.hasWon)              return (false, loanAmount, interest, totalRepay, "Already won");
+        if (m.hasActiveLoan)       return (false, loanAmount, interest, totalRepay, "Loan already active");
+
+        return (true, loanAmount, interest, totalRepay, "");
     }
 }

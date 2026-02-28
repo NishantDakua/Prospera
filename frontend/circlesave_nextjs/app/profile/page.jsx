@@ -9,6 +9,7 @@ import useContract from "@/hooks/useContract";
 import ConnectWallet from "@/views/ui/ConnectWallet";
 import { fmtEth, fmtEthSymbol, shortenAddress, poolTypeName } from "@/lib/utils";
 import { exportTransactionsPDF } from "@/lib/exportPdf";
+import { TrustScoreCard, TrustScoreBadge, useTrustScore } from "@/components/TrustScore";
 
 /** Transaction display metadata */
 const TX_META = {
@@ -41,6 +42,7 @@ export default function ProfilePage() {
     const [walletActionLoading, setWalletActionLoading] = useState(false);
     const [avatarUploading, setAvatarUploading] = useState(false);
     const fileInputRef = useRef(null);
+    const { scoreData, loading: scoreLoading } = useTrustScore();
 
     const handleAvatarUpload = async (e) => {
         const file = e.target.files?.[0];
@@ -377,7 +379,10 @@ export default function ProfilePage() {
                                     </div>
                                     <div className="flex-1 text-center md:text-left">
                                         {user?.fullName && (
-                                            <h2 className="text-luxury-cream text-3xl font-black tracking-tight mb-1">{user.fullName}</h2>
+                                            <h2 className="text-luxury-cream text-3xl font-black tracking-tight mb-1 flex items-center gap-3">
+                                                {user.fullName}
+                                                {scoreData && <TrustScoreBadge score={scoreData.score} size="md" />}
+                                            </h2>
                                         )}
                                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-3">
                                             <p className="text-luxury-gold/60 font-mono text-sm tracking-tight">{shortenAddress(address)}</p>
@@ -694,6 +699,11 @@ export default function ProfilePage() {
                                     <p className="text-luxury-gold/60 text-[10px] font-bold uppercase tracking-widest">Active Loans</p>
                                     <p className="text-3xl font-extrabold text-luxury-cream">{totalLoans}</p>
                                 </div>
+                            </div>
+
+                            {/* Trust Score Card */}
+                            <div className="mb-12">
+                                <TrustScoreCard scoreData={scoreData} loading={scoreLoading} />
                             </div>
 
                             {/* Tab Navigation */}

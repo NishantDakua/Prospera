@@ -357,3 +357,9 @@ input[type='range']::-webkit-slider-thumb {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.3; }
 }
+
+/* ── Custom scrollbar for AI Insights ── */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(213, 191, 134, 0.2); border-radius: 999px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(213, 191, 134, 0.4); }

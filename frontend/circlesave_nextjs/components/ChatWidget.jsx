@@ -49,7 +49,7 @@ function ChatBubble({ role, text, time }) {
         {text}
       </div>
       <span className="text-[10px] text-luxury-cream/25 px-1">
-        {isUser ? "You" : "CircleSave AI"} &middot; {fmtTime(time)}
+        {isUser ? "You" : "Prospera AI"} &middot; {fmtTime(time)}
       </span>
     </div>
   );
@@ -166,7 +166,7 @@ export default function ChatWidget() {
         <div className="w-8 h-8 rounded-full bg-luxury-crimson flex items-center justify-center">
           <span className="material-symbols-outlined text-luxury-cream text-base">smart_toy</span>
         </div>
-        <span className="text-sm font-bold text-luxury-cream">CircleSave AI</span>
+        <span className="text-sm font-bold text-luxury-cream">Prospera AI</span>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -198,7 +198,7 @@ export default function ChatWidget() {
             <span className="material-symbols-outlined text-luxury-cream text-xl">smart_toy</span>
           </div>
           <div>
-            <p className="text-sm font-extrabold text-luxury-cream leading-none">CircleSave AI</p>
+            <p className="text-sm font-extrabold text-luxury-cream leading-none">Prospera AI</p>
             <p className="text-[10px] font-bold text-luxury-gold tracking-widest uppercase mt-0.5">
               Premium Assistant
             </p>

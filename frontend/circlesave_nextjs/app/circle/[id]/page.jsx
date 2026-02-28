@@ -8,12 +8,15 @@ import { useWeb3 } from "@/context/Web3Provider";
 import useContract from "@/hooks/useContract";
 import ConnectWallet from "@/views/ui/ConnectWallet";
 import { fmtEth, fmtEthSymbol, poolTypeName, shortenAddress } from "@/lib/utils";
+import AiInsights from "@/components/AiInsights";
+import { TrustScoreBadge } from "@/components/TrustScore";
+import { computeTrustScore, gatherScoreData } from "@/lib/trustScore";
 
 export default function CircleDetailPage() {
   const params = useParams();
   const groupId = Number(params.id);
 
-  const { address, isAdmin, wrongNetwork } = useWeb3();
+  const { address, isAdmin, wrongNetwork, contract } = useWeb3();
   const {
     loading,
     getGroupInfo,
@@ -22,11 +25,13 @@ export default function CircleDetailPage() {
     getMemberData,
     getMemberBid,
     getWithdrawableBalance,
+    getLoanTerms,
     joinGroup,
     contribute,
     placeBid,
     settleRound,
     issueLoan,
+    requestLoan,
     liquidateMember,
     withdrawBalance,
   } = useContract();
@@ -43,6 +48,9 @@ export default function CircleDetailPage() {
   const [timing, setTiming] = useState(null);
   const [myWithdrawable, setMyWithdrawable] = useState(0n);
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [memberScores, setMemberScores] = useState({});
+  const [myLoanTerms, setMyLoanTerms] = useState(null);
+  const [myTrustScore, setMyTrustScore] = useState(null);
 
   // Live clock — update every second for countdown accuracy
   useEffect(() => {
@@ -79,17 +87,49 @@ export default function CircleDetailPage() {
         setMyBid(mb);
         const wb = await getWithdrawableBalance(address);
         setMyWithdrawable(wb);
+
+        // Fetch loan terms for the connected user
+        try {
+          const terms = await getLoanTerms(groupId, address);
+          setMyLoanTerms(terms);
+        } catch { setMyLoanTerms(null); }
+
+        // Fetch trust score for the connected user
+        try {
+          const data = await gatherScoreData(contract, address, getGroupInfo, getMemberData);
+          const result = computeTrustScore(data);
+          setMyTrustScore(result);
+        } catch { setMyTrustScore(null); }
       }
     } catch (e) {
       console.error("Failed to load group:", e);
     } finally {
       setFetching(false);
     }
-  }, [groupId, address, getGroupInfo, getGroupTiming, getGroupMembers, getMemberData, getMemberBid, getWithdrawableBalance]);
+  }, [groupId, address, contract, getGroupInfo, getGroupTiming, getGroupMembers, getMemberData, getMemberBid, getWithdrawableBalance, getLoanTerms]);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // ── Compute trust scores for all members (background) ─────
+  useEffect(() => {
+    if (!contract || members.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const scores = {};
+      for (const m of members) {
+        try {
+          const data = await gatherScoreData(contract, m, getGroupInfo, getMemberData);
+          const result = computeTrustScore(data);
+          if (cancelled) return;
+          scores[m] = result.score;
+        } catch { /* skip */ }
+      }
+      if (!cancelled) setMemberScores(scores);
+    })();
+    return () => { cancelled = true; };
+  }, [contract, members, getGroupInfo, getMemberData]);
 
   // ── Handlers ───────────────────────────────────────────────
   const handleJoin = () => {
@@ -135,6 +175,10 @@ export default function CircleDetailPage() {
       parseEther(inp.interest),
       refresh
     );
+  };
+
+  const handleRequestLoan = () => {
+    requestLoan(groupId, refresh);
   };
 
   const handleLiquidate = (memberAddr) => {
@@ -451,6 +495,22 @@ export default function CircleDetailPage() {
               </div>
             </div>
 
+            {/* AI Insights */}
+            {group && timing && (
+              <AiInsights
+                circleParams={{
+                  contributionAmount: parseFloat(fmtEth(group.contributionAmount)),
+                  maxMembers: Number(group.maxMembers),
+                  poolType: group.poolType,
+                  totalDuration: timing.totalDuration,
+                  biddingWindow: timing.biddingWindow,
+                  currentRound: Number(group.currentRound),
+                  poolAmount: parseFloat(fmtEth(group.poolAmount)),
+                  memberCount: Number(group.memberCount),
+                }}
+              />
+            )}
+
             {/* Members Table */}
             <div className="glass-card-bidding p-8 rounded-3xl">
               <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
@@ -466,6 +526,7 @@ export default function CircleDetailPage() {
                       <th className="pb-4">Round</th>
                       <th className="pb-4">Status</th>
                       <th className="pb-4">Deposit</th>
+                      <th className="pb-4">Score</th>
                       {isAdmin && <th className="pb-4">Actions</th>}
                     </tr>
                   </thead>
@@ -507,6 +568,13 @@ export default function CircleDetailPage() {
                               <span className="text-red-400 text-[10px] font-black">USED</span>
                             ) : (
                               <span className="text-emerald-400 text-[10px] font-black">INTACT</span>
+                            )}
+                          </td>
+                          <td className="py-4">
+                            {memberScores[m] != null ? (
+                              <TrustScoreBadge score={memberScores[m]} size="sm" />
+                            ) : (
+                              <span className="text-slate-500 text-[10px]">—</span>
                             )}
                           </td>
                           {isAdmin && (
@@ -587,7 +655,130 @@ export default function CircleDetailPage() {
                     <p className="text-slate-500 text-sm">No eligible members for loans.</p>
                   )}
                   <p className="text-slate-500 text-xs">
-                    Max loan = 50% of current pool ({fmtEth(group.poolAmount / 2n)} ETH)
+                    Max loan = 50% of plan value ({fmtEth((group.contributionAmount * BigInt(group.maxMembers)) / 2n)} ETH)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* ── P2P Loan Request (Member Self-Service) ── */}
+            {isMember && myData && !myData.hasWon && !myData.hasActiveLoan && (
+              <div id="loan" className="glass-card-bidding p-8 rounded-3xl border border-amber-500/20">
+                <h3 className="text-xl font-black text-white mb-6 flex items-center gap-3">
+                  <span className="material-symbols-outlined text-amber-400">request_quote</span>
+                  Request a Loan
+                </h3>
+
+                {/* Trust Score Gate */}
+                {myTrustScore && myTrustScore.score < 500 ? (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+                    <span className="material-symbols-outlined text-4xl text-red-400 mb-2 block">gpp_bad</span>
+                    <p className="text-red-300 font-bold mb-1">Trust Score Too Low</p>
+                    <p className="text-slate-400 text-sm">
+                      Your trust score is <span className="text-red-400 font-bold">{myTrustScore.score}</span>.
+                      You need at least <span className="text-amber-400 font-bold">500</span> to be eligible for a loan.
+                    </p>
+                    <p className="text-slate-500 text-xs mt-3">
+                      Improve your score by making timely contributions and completing circles.
+                    </p>
+                  </div>
+                ) : myLoanTerms ? (
+                  <div className="space-y-4">
+                    {/* Loan Terms Card */}
+                    <div className="bg-white/[0.03] rounded-xl p-6 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 text-sm">Plan Value</span>
+                        <span className="text-white font-bold">{fmtEthSymbol(group.contributionAmount * BigInt(group.maxMembers))}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400 text-sm">Loan Amount (50%)</span>
+                        <span className="text-[#D5BF86] font-black text-lg">{fmtEthSymbol(myLoanTerms.loanAmount)}</span>
+                      </div>
+                      <div className="border-t border-white/5 pt-3 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 text-xs">Platform Fee (10%)</span>
+                          <span className="text-slate-300 text-sm">{fmtEthSymbol(myLoanTerms.loanAmount * 10n / 100n)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-500 text-xs">Interest (8%)</span>
+                          <span className="text-slate-300 text-sm">{fmtEthSymbol(myLoanTerms.loanAmount * 8n / 100n)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-slate-400 text-sm font-bold">Total Interest (18%)</span>
+                          <span className="text-orange-400 font-bold">{fmtEthSymbol(myLoanTerms.interest)}</span>
+                        </div>
+                      </div>
+                      <div className="border-t border-white/5 pt-3 flex justify-between items-center">
+                        <span className="text-white text-sm font-bold">Total Repayment</span>
+                        <span className="text-white font-black text-lg">{fmtEthSymbol(myLoanTerms.totalRepay)}</span>
+                      </div>
+                    </div>
+
+                    {/* Trust Score Badge */}
+                    {myTrustScore && (
+                      <div className="flex items-center gap-3 bg-white/[0.02] rounded-xl px-4 py-3">
+                        <span className="text-slate-400 text-sm">Your Trust Score:</span>
+                        <TrustScoreBadge score={myTrustScore.score} />
+                        <span className="text-emerald-400 text-xs ml-auto">✓ Eligible</span>
+                      </div>
+                    )}
+
+                    {/* Eligibility status */}
+                    {!myLoanTerms.eligible && (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                        <p className="text-red-300 text-sm font-bold flex items-center gap-2">
+                          <span className="material-symbols-outlined text-lg">warning</span>
+                          {myLoanTerms.reason}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Request Button */}
+                    <button
+                      onClick={handleRequestLoan}
+                      disabled={loading || !myLoanTerms.eligible || wrongNetwork}
+                      className="w-full premium-gradient text-white font-black py-4 rounded-xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50 shadow-lg shadow-amber-500/20"
+                    >
+                      <span className="material-symbols-outlined">bolt</span>
+                      Request Loan — {fmtEthSymbol(myLoanTerms.loanAmount)}
+                    </button>
+
+                    <p className="text-slate-500 text-xs text-center">
+                      Loan is credited instantly to your withdrawable balance.
+                      Repayment ({fmtEthSymbol(myLoanTerms.totalRepay)}) is auto-deducted when you win a round.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <span className="material-symbols-outlined text-2xl text-slate-600 animate-spin">progress_activity</span>
+                    <p className="text-slate-500 text-sm mt-2">Loading loan terms…</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Show active loan info if member has one */}
+            {isMember && myData && myData.hasActiveLoan && (
+              <div className="glass-card-bidding p-8 rounded-3xl border border-orange-500/20">
+                <h3 className="text-xl font-black text-white mb-4 flex items-center gap-3">
+                  <span className="material-symbols-outlined text-orange-400">receipt_long</span>
+                  Active Loan
+                </h3>
+                <div className="bg-white/[0.03] rounded-xl p-6 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 text-sm">Principal</span>
+                    <span className="text-white font-bold">{fmtEthSymbol(myData.loanAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 text-sm">Interest Due</span>
+                    <span className="text-orange-400 font-bold">{fmtEthSymbol(myData.loanInterest)}</span>
+                  </div>
+                  <div className="border-t border-white/5 pt-3 flex justify-between items-center">
+                    <span className="text-white text-sm font-bold">Total Owed</span>
+                    <span className="text-red-400 font-black text-lg">{fmtEthSymbol(myData.loanAmount + myData.loanInterest)}</span>
+                  </div>
+                  <p className="text-slate-500 text-xs pt-2">
+                    This will be automatically deducted when you win a round.
                   </p>
                 </div>
               </div>
@@ -776,7 +967,7 @@ export default function CircleDetailPage() {
                         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-center">
                           <span className="material-symbols-outlined text-amber-400 text-2xl mb-1 block">hourglass_empty</span>
                           <p className="text-amber-400 text-xs font-bold">Pool is empty</p>
-                          <p className="text-slate-400 text-xs mt-1">Members must contribute before bidding opens.</p>
+                          <p className="text-slate-400 text-xs mt-1">Waiting for contributions so bid amounts can be determined.</p>
                         </div>
                       )}
                     </div>
