@@ -325,3 +325,35 @@ input[type='range']::-webkit-slider-thumb {
 .rounded-custom {
   border-radius: 20px;
 }
+
+/* ============================================
+   CHAT WIDGET ANIMATIONS
+   ============================================ */
+@keyframes chat-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ============================================
+   VOICE AGENT ANIMATIONS
+   ============================================ */
+@keyframes voice-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes voice-pulse {
+  0%   { transform: scale(0.8); opacity: 0.6; }
+  50%  { transform: scale(1.1); opacity: 0.2; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+
+@keyframes voice-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}

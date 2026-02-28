@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import SimButton from "./ui/Button";
 import Link from "next/link";
 
-/* ── Badge calculator ──────────────────────────────────────── */
+/* â”€â”€ Badge calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function getBadge(trustScore, userWon) {
   if (trustScore >= 70)
     return {
@@ -19,7 +19,7 @@ function getBadge(trustScore, userWon) {
       label: "Risk Taker",
       iconName: "bolt",
       description:
-        "Bid aggressively and won early. Bold moves — stay disciplined!",
+        "Bid aggressively and won early. Bold moves â€” stay disciplined!",
       color: "#F59E0B",
     };
   return {
@@ -31,7 +31,7 @@ function getBadge(trustScore, userWon) {
   };
 }
 
-/* ── Confetti ──────────────────────────────────────────────── */
+/* â”€â”€ Confetti â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Confetti() {
   const particles = Array.from({ length: 30 }, (_, i) => ({
     id: i,
@@ -94,7 +94,7 @@ function Confetti() {
               animation: `confetti-fall ${p.duration}s ${p.delay}s ease-in-out forwards`,
             }}
           >
-            {p.shape === 2 ? "✦" : null}
+            {p.shape === 2 ? "âœ¦" : null}
           </div>
         ))}
       </div>
@@ -102,7 +102,7 @@ function Confetti() {
   );
 }
 
-/* ── Star rating (1-3) ─────────────────────────────────────── */
+/* â”€â”€ Star rating (1-3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function StarRating({ score }) {
   const stars = score >= 75 ? 3 : score >= 50 ? 2 : 1;
   return (
@@ -117,14 +117,14 @@ function StarRating({ score }) {
             filter: s <= stars ? "drop-shadow(0 0 10px #F59E0B)" : "none",
           }}
         >
-          ★
+          â˜…
         </span>
       ))}
     </div>
   );
 }
 
-/* ── Journey Step Card ─────────────────────────────────────── */
+/* â”€â”€ Journey Step Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function JourneyStep({ step, title, icon, color, lesson, stat, statLabel, delay = 0 }) {
   return (
     <div
@@ -136,10 +136,10 @@ function JourneyStep({ step, title, icon, color, lesson, stat, statLabel, delay 
       }}
     >
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0"
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
         style={{ background: `${color}20`, color }}
       >
-        {icon}
+        <span className="material-symbols-outlined text-lg">{icon}</span>
       </div>
       <div className="flex-1 flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
@@ -174,7 +174,7 @@ function JourneyStep({ step, title, icon, color, lesson, stat, statLabel, delay 
   );
 }
 
-/* ── Main completion screen ────────────────────────────────── */
+/* â”€â”€ Main completion screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function CompletionLevel({ simState, onClose, onAction }) {
   const {
     poolConfig,
@@ -214,7 +214,7 @@ export default function CompletionLevel({ simState, onClose, onAction }) {
     <div className="relative flex flex-col gap-8 overflow-hidden">
       <Confetti />
 
-      {/* ── GAME CLEAR banner ────────────────────────────── */}
+      {/* â”€â”€ GAME CLEAR banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="relative z-10 flex flex-col items-center gap-5 py-6">
         <div
           className="text-4xl font-extrabold uppercase text-center tracking-widest"
@@ -227,7 +227,7 @@ export default function CompletionLevel({ simState, onClose, onAction }) {
             WebkitTextFillColor: "transparent",
           }}
         >
-          ★ GAME CLEAR! ★
+          â˜… GAME CLEAR! â˜…
         </div>
 
         <StarRating score={trust} />
@@ -252,7 +252,7 @@ export default function CompletionLevel({ simState, onClose, onAction }) {
         </p>
       </div>
 
-      {/* ── YOUR JOURNEY – educational recap ─────────────── */}
+      {/* â”€â”€ YOUR JOURNEY â€“ educational recap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {showJourney && (
         <div
           className="relative z-10 rounded-2xl p-6"
@@ -263,7 +263,7 @@ export default function CompletionLevel({ simState, onClose, onAction }) {
         >
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
-              <span className="text-lg">📖</span>
+              <span className="material-symbols-outlined text-lg text-[#D5BF86]">menu_book</span>
               <p
                 className="text-xs font-extrabold uppercase tracking-widest"
                 style={{ color: "#D5BF86", fontFamily: "monospace" }}
@@ -287,309 +287,51 @@ export default function CompletionLevel({ simState, onClose, onAction }) {
             <JourneyStep
               step="Level 1"
               title="Joined a Chit Fund Pool"
-              icon="🎰"
+              icon="casino"
               color="#D5BF86"
-              lesson={`You joined a pool of ${poolConfig?.members ?? 10} members, each contributing ₹${(poolConfig?.contribution ?? 5000).toLocaleString()}/month. The total pool value is ₹${(poolValue ?? 50000).toLocaleString()}. In a real circle, this money gets distributed to one member each month.`}
-              stat={`₹${(poolValue ?? 50000).toLocaleString()}`}
+              lesson={`You joined a pool of ${poolConfig?.members ?? 10} members, each contributing â‚¹${(poolConfig?.contribution ?? 5000).toLocaleString()}/month. The total pool value is â‚¹${(poolValue ?? 50000).toLocaleString()}. In a real circle, this money gets distributed to one member each month.`}
+              stat={`â‚¹${(poolValue ?? 50000).toLocaleString()}`}
               statLabel="Pool value understood"
               delay={0.1}
             />
-
             <JourneyStep
               step="Level 2"
               title="Participated in an Auction"
-              icon="🏆"
+              icon="emoji_events"
               color="#F59E0B"
-              lesson={
-                biddingWinner
-                  ? `${biddingWinner} won the auction by bidding a discount of ₹${(bid ?? 0).toLocaleString()}. That means the winner receives ₹${(biddingPayout ?? 0).toLocaleString()} instead of the full ₹50,000. The ₹${(bid ?? 0).toLocaleString()} discount gets distributed as profit to remaining members.`
-                  : "You experienced how the auction works. Members who need money urgently bid a higher discount, and the highest bidder wins. The discount amount is shared as profit among the remaining members."
-              }
-              stat={
-                biddingWinner
-                  ? `₹${(biddingPayout ?? 0).toLocaleString()}`
-                  : "—"
-              }
-              statLabel={biddingWinner ? `Payout to ${biddingWinner}` : "Auction payout"}
-              delay={0.25}
+              lesson={`The auction determines who gets the pool money first. You ${userWon ? `won by bidding â‚¹${Number(bid ?? 0).toLocaleString()}` : `bid â‚¹${Number(bid ?? 0).toLocaleString()} but didn't win`}. ${biddingWinner ? `${biddingWinner} won with a bid of â‚¹${(winningDiscount ?? 0).toLocaleString()}.` : ""} The winner's bid is distributed as profit to others.`}
+              stat={userWon ? "WON" : `â‚¹${Number(bid ?? 0).toLocaleString()}`}
+              statLabel={userWon ? "You got the money first" : "Your bid amount"}
+              delay={0.2}
             />
-
             <JourneyStep
               step="Level 3"
               title="Managed Loan Repayment"
-              icon="🛡️"
+              icon="shield"
               color="#10B981"
-              lesson={`After winning the pot, you need to keep paying your monthly installments. ${
-                trust >= 70
-                  ? "You maintained excellent discipline — your trust score is high, making you a valuable member for future circles."
-                  : trust >= 50
-                  ? "You had a mixed record. Some delayed payments hurt your trust. In a real circle, this would reduce your access to future pools."
-                  : "Multiple delayed payments damaged your trust score. In a real on-chain circle, this would be permanently recorded and could lock you out of future pools."
-              }`}
+              lesson={`${userWon ? "Because you won, you must keep paying monthly installments until the circle ends." : "You continued paying monthly installments to keep the pool running."} Timely payments build trust. Your trust score ended at ${trust}/100. ${trust >= 70 ? "Excellent discipline!" : trust >= 40 ? "Good effort - keep improving!" : "Work on consistency."}`}
               stat={`${trust}/100`}
               statLabel="Final trust score"
-              delay={0.4}
+              delay={0.3}
             />
           </div>
         </div>
       )}
 
-      {/* ── Score board ──────────────────────────────────── */}
-      {showJourney && (
-        <div
-          className="relative z-10 rounded-2xl p-6"
-          style={{
-            background: "#070F1E",
-            border: "2px solid #D5BF8618",
-            animation: "fade-up 0.5s 0.6s both",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <span className="text-lg">📊</span>
-            <p
-              className="text-xs font-extrabold uppercase tracking-widest"
-              style={{ color: "#D5BF86", fontFamily: "monospace" }}
-            >
-              SCORE BOARD
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {/* Stat Cards */}
-            <StatCard
-              icon="👥"
-              label="Members"
-              value={`${poolConfig?.members ?? 10}`}
-              delay={0.65}
-            />
-            <StatCard
-              icon="💰"
-              label="Pool Value"
-              value={`₹${(poolValue ?? 50000).toLocaleString()}`}
-              accent
-              delay={0.7}
-            />
-            <StatCard
-              icon="🏆"
-              label="Round Winner"
-              value={biddingWinner ?? "—"}
-              delay={0.75}
-            />
-            <StatCard
-              icon="💸"
-              label="Payout"
-              value={
-                biddingPayout
-                  ? `₹${biddingPayout.toLocaleString()}`
-                  : "—"
-              }
-              accent
-              delay={0.8}
-            />
-            <StatCard
-              icon="💵"
-              label="Your Bid"
-              value={bid ? `₹${Number(bid).toLocaleString()}` : "—"}
-              delay={0.85}
-            />
-            <StatCard
-              icon="📅"
-              label="Duration"
-              value={`${poolConfig?.duration ?? 10} months`}
-              delay={0.9}
-            />
-            <StatCard
-              icon="🛡️"
-              label="Trust Score"
-              value={`${trust}/100`}
-              accent
-              delay={0.95}
-            />
-            <StatCard
-              icon="⭐"
-              label="Total XP"
-              value={`${totalXP} XP`}
-              accent
-              delay={1.0}
-            />
-          </div>
-
-          {/* Trust bar */}
-          <div className="mt-5 flex flex-col gap-2">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="text-luxury-cream/40 uppercase tracking-wider">
-                Trust Rating
-              </span>
-              <span style={{ color: trustColor }}>{trust}%</span>
-            </div>
-            <div
-              className="h-3 rounded-full overflow-hidden"
-              style={{ background: "#1A2D50" }}
-            >
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${trust}%`,
-                  backgroundColor: trustColor,
-                  boxShadow: `0 0 10px ${trustColor}99`,
-                  animation:
-                    "trust-fill 1.2s 1s cubic-bezier(0.34,1.56,0.64,1) both",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Payment history pills */}
-          {(paymentHistory ?? []).length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {(paymentHistory ?? []).map((h, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider"
-                  style={{
-                    backgroundColor:
-                      h.delta > 0 ? "#10B98115" : "#EF444415",
-                    border: `1px solid ${
-                      h.delta > 0 ? "#10B98144" : "#EF444444"
-                    }`,
-                    color: h.delta > 0 ? "#10B981" : "#EF4444",
-                  }}
-                >
-                  {h.label} · {h.status}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Key Takeaways ────────────────────────────────── */}
-      {showJourney && (
-        <div
-          className="relative z-10 rounded-2xl p-6"
-          style={{
-            background: "linear-gradient(135deg, #0A162808, #D5BF8606)",
-            border: "2px solid #D5BF8612",
-            animation: "fade-up 0.5s 1.1s both",
-          }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">🎓</span>
-            <p
-              className="text-xs font-extrabold uppercase tracking-widest"
-              style={{ color: "#D5BF86", fontFamily: "monospace" }}
-            >
-              KEY TAKEAWAYS
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <TakeawayCard
-              number="01"
-              title="Collective Saving"
-              text="Chit funds pool small contributions into large payouts. You save and borrow from the same group — no bank, no interest rate markups."
-              color="#D5BF86"
-            />
-            <TakeawayCard
-              number="02"
-              title="Fair Distribution"
-              text="Auctions ensure the member who needs money most gets it first by bidding the highest discount. Others earn that discount as profit."
-              color="#F59E0B"
-            />
-            <TakeawayCard
-              number="03"
-              title="Trust is Currency"
-              text="Your payment reliability builds your on-chain reputation. Higher trust = access to better pools, lower collateral requirements."
-              color="#10B981"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── CTA row ──────────────────────────────────────── */}
-      {showJourney && (
-        <div
-          className="relative z-10 rounded-2xl p-7 flex flex-col items-center gap-4 text-center"
-          style={{
-            background: "#0A1628",
-            border: "2px solid #D5BF8618",
-            animation: "fade-up 0.5s 1.3s both",
-          }}
-        >
-          <p className="text-lg font-extrabold text-luxury-cream">
-            Ready to Join a Real Pool on Prospera?
-          </p>
-          <p className="text-luxury-cream/40 text-sm max-w-sm leading-relaxed">
-            Apply your knowledge and start building financial resilience with a
-            real trusted community — all secured on-chain.
-          </p>
-          <div className="flex items-center gap-3 mt-1 flex-wrap justify-center">
-            <Link href="/dashboard">
-              <SimButton variant="primary" onClick={onClose}>
-                <span className="material-symbols-outlined text-sm">
-                  rocket_launch
-                </span>
-                Join Real Pool
-              </SimButton>
-            </Link>
-            <SimButton variant="ghost" onClick={onClose}>
-              <span className="material-symbols-outlined text-sm">
-                refresh
-              </span>
-              Play Again
-            </SimButton>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Stat Card ─────────────────────────────────────────────── */
-function StatCard({ icon, label, value, accent, delay = 0 }) {
-  return (
-    <div
-      className="flex flex-col gap-1.5 p-3 rounded-xl border border-luxury-gold/8 bg-white/[0.02]"
-      style={{ animation: `fade-up 0.4s ${delay}s both` }}
-    >
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm">{icon}</span>
-        <span className="text-[9px] text-luxury-cream/30 uppercase tracking-widest font-bold">
-          {label}
-        </span>
+      {/* â"€â"€ Action buttons â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€ */}
+      <div className="relative z-10 flex flex-col sm:flex-row gap-3">
+        <SimButton onClick={onClose} variant="secondary">
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          Exit Simulator
+        </SimButton>
+        <Link href="/dashboard" className="flex-1">
+          <SimButton variant="primary" className="w-full">
+            <span className="material-symbols-outlined text-lg">rocket_launch</span>
+            Join a Real Circle
+          </SimButton>
+        </Link>
       </div>
-      <span
-        className={`text-sm font-extrabold ${
-          accent ? "text-luxury-gold" : "text-luxury-cream"
-        }`}
-      >
-        {value}
-      </span>
     </div>
   );
 }
 
-/* ── Takeaway Card ─────────────────────────────────────────── */
-function TakeawayCard({ number, title, text, color }) {
-  return (
-    <div
-      className="flex flex-col gap-2 p-4 rounded-xl border"
-      style={{
-        background: `${color}06`,
-        borderColor: `${color}18`,
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className="text-[10px] font-black"
-          style={{ color, fontFamily: "monospace" }}
-        >
-          {number}
-        </span>
-        <span className="text-xs font-extrabold text-luxury-cream">
-          {title}
-        </span>
-      </div>
-      <p className="text-luxury-cream/40 text-[11px] leading-relaxed">{text}</p>
-    </div>
-  );
-}

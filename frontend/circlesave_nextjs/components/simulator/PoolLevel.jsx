@@ -13,9 +13,9 @@ const POOL_CONFIG = {
 
 /* ── Phases of this guided tutorial ────────────────────────── */
 const PHASES = [
-  { key: "learn",   label: "Learn",   icon: "📖" },
-  { key: "explore", label: "Explore", icon: "🔍" },
-  { key: "join",    label: "Join",    icon: "🎮" },
+  { key: "learn",   label: "Learn",   icon: "menu_book" },
+  { key: "explore", label: "Explore", icon: "search" },
+  { key: "join",    label: "Join",    icon: "sports_esports" },
 ];
 
 /* ── Tooltip helper ────────────────────────────────────────── */
@@ -60,7 +60,7 @@ function PhaseBar({ current }) {
                   : "bg-white/[0.02] text-luxury-cream/25 border border-white/5"
               }`}
             >
-              <span>{done ? "✓" : p.icon}</span>
+              <span className="material-symbols-outlined text-[12px]">{done ? "check" : p.icon}</span>
               <span>{p.label}</span>
             </div>
             {i < PHASES.length - 1 && (
@@ -131,7 +131,7 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
       {phase === 0 && (
         <div className="flex flex-col gap-6 animate-fadeIn">
           <div className="flex items-start gap-3 p-5 rounded-xl bg-[#D5BF86]/5 border border-[#D5BF86]/15">
-            <span className="text-2xl mt-0.5">📖</span>
+            <span className="material-symbols-outlined text-xl mt-0.5 text-[#D5BF86]">menu_book</span>
             <div className="flex flex-col gap-2">
               <p className="text-[#D5BF86] text-xs font-extrabold uppercase tracking-widest">What is a Chit Fund?</p>
               <p className="text-luxury-cream/60 text-sm leading-relaxed">
@@ -171,7 +171,7 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
           </SimCard>
 
           <div className="flex items-start gap-3 p-4 rounded-xl bg-[#10B981]/5 border border-[#10B981]/15">
-            <span className="text-lg">🎮</span>
+            <span className="material-symbols-outlined text-base text-[#10B981]">sports_esports</span>
             <p className="text-luxury-cream/60 text-xs leading-relaxed">
               <span className="text-[#10B981] font-bold">No real money involved!</span> This is a safe simulation. Explore at your own pace — earn XP as you learn each concept.
             </p>
@@ -190,7 +190,7 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
       {phase === 1 && (
         <div className="flex flex-col gap-6 animate-fadeIn">
           <div className="flex items-start gap-3 p-4 rounded-xl bg-[#F59E0B]/5 border border-[#F59E0B]/15">
-            <span className="text-lg">🔍</span>
+            <span className="material-symbols-outlined text-base text-[#F59E0B]">search</span>
             <p className="text-luxury-cream/60 text-xs leading-relaxed">
               <span className="text-[#F59E0B] font-bold">Tap each card below</span> to reveal the details of this pool. Discover what Members, Contributions, and Duration mean.
             </p>
@@ -236,7 +236,7 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
                       </>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-4 gap-2">
-                        <span className="text-2xl">❓</span>
+                        <span className="material-symbols-outlined text-xl text-luxury-gold">help</span>
                         <p className="text-[10px] text-luxury-gold font-bold uppercase tracking-widest">Tap to Reveal</p>
                         <p className="text-[10px] text-luxury-cream/30">{card.label}</p>
                       </div>
@@ -309,7 +309,7 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
         <div className="flex flex-col gap-6 animate-fadeIn">
           <SimCard highlight>
             <div className="flex flex-col items-center text-center gap-4 py-4">
-              <div className="text-4xl">🎉</div>
+              <span className="material-symbols-outlined text-4xl text-luxury-gold">celebration</span>
               <h3 className="text-xl font-extrabold text-luxury-cream">Ready to Join?</h3>
               <p className="text-luxury-cream/50 text-sm leading-relaxed max-w-md">
                 You've learned how a chit fund pool works. Now commit your first contribution of
@@ -318,17 +318,17 @@ export default function PoolLevel({ onNext, onUpdateState, onAction }) {
               </p>
 
               <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-luxury-cream/40">
-                <span className="flex items-center gap-1 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
-                  👥 {POOL_CONFIG.members} members
+                <span className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
+                  <span className="material-symbols-outlined text-sm text-luxury-gold/60">group</span> {POOL_CONFIG.members} members
                 </span>
-                <span className="flex items-center gap-1 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
-                  💰 ₹{POOL_CONFIG.contribution.toLocaleString()}/mo
+                <span className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
+                  <span className="material-symbols-outlined text-sm text-luxury-gold/60">payments</span> ₹{POOL_CONFIG.contribution.toLocaleString()}/mo
                 </span>
-                <span className="flex items-center gap-1 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
-                  📅 {POOL_CONFIG.duration} months
+                <span className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
+                  <span className="material-symbols-outlined text-sm text-luxury-gold/60">calendar_month</span> {POOL_CONFIG.duration} months
                 </span>
-                <span className="flex items-center gap-1 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
-                  🏆 ₹{poolValue.toLocaleString()} pot
+                <span className="flex items-center gap-1.5 bg-white/[0.03] border border-white/5 px-3 py-1.5 rounded-lg">
+                  <span className="material-symbols-outlined text-sm text-luxury-gold/60">emoji_events</span> ₹{poolValue.toLocaleString()} pot
                 </span>
               </div>
             </div>

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+websockets
+python-dotenv
+langgraph
+langchain
+langchain-core
+langchain-community
+pydantic
+google-serper-api

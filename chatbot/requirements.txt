@@ -1,0 +1,9 @@
+langchain-community
+
+flask
+flask-cors
+langchain
+chromadb
+sentence-transformers
+huggingface-hub
+openai

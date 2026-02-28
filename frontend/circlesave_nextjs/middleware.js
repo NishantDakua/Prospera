@@ -11,6 +11,8 @@ const COOKIE_NAME = "cs_token";
 const PUBLIC_ROUTES = [
   "/", "/login", "/signup",
   "/api/auth/login", "/api/auth/signup", "/api/auth/logout", "/api/init",
+  "/api/chat",  // Allow chat widget to work without authentication
+  "/api/voice", // Allow voice agent WebSocket
 ];
 
 // Routes restricted to admin only (includes pool creation)
